@@ -1,0 +1,50 @@
+{
+    // The Java lessons are plain single-file programs (no Maven or Gradle).
+    // Listing their folders here gives full code help and a Run button in VS Code.
+    // All three folders share one default package, so every class name must be unique
+    // (the J01_, S01_, D01_ prefixes take care of that).
+    "java.project.sourcePaths": [
+        "01-java-core",
+        "02-java8-streams",
+        "04-dsa"
+    ],
+
+    // Interview and payments words the spell checker doesn't know.
+    "cSpell.words": [
+        "AmbitionBox",
+        "BBPS",
+        "BharatNXT",
+        "CTC",
+        "Hashtable",
+        "IMPS",
+        "Lombok",
+        "NEFT",
+        "Pageable",
+        "PayU",
+        "Priya",
+        "Rahul",
+        "Setu",
+        "Sharma",
+        "StackBlitz",
+        "TXN",
+        "UPI",
+        "bbps",
+        "concatMap",
+        "crore",
+        "debounceTime",
+        "distinctUntilChanged",
+        "exhaustMap",
+        "idempotency",
+        "lakh",
+        "mergeMap",
+        "metaspace",
+        "negotiables",
+        "ngOnInit",
+        "providedIn",
+        "switchMap",
+        "takeUntilDestroyed",
+        "treeify",
+        "treeified",
+        "untreeify"
+    ]
+}
