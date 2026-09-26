@@ -61,8 +61,10 @@ For streams and SQL practice, SPRINT-PLAN.md says the user tries each problem fo
 **SQL notes:**
 - Put the problem and the small sample rows it uses in `--` comments at the top.
 - Then give the solutions with comments, and the expected result as comments.
-- `Q00_setup.sql` creates the tables.
+- `Q00_setup.sql` creates the tables. `Q00_sql_toolkit.md` is the concept lesson that uses the same data.
 - Postgres isn't installed locally, so every file has to run on db-fiddle.com with PostgreSQL selected.
+- **Verifying SQL:** run each file on Node's built-in SQLite with a scratchpad script (`node --no-warnings verify_sql.js`, using `require('node:sqlite')`), and compare every result with the comments. Standard SQL behaves the same on SQLite. Label PostgreSQL-only syntax (`DISTINCT ON`, `generate_series`, `EXPLAIN` output, `BEGIN ISOLATION LEVEL`, `FOR UPDATE`) as "PostgreSQL only", and check those parts by reasoning. Q03's company average was caught this way: the first draft said 545,000, but the real total was 535,000.
+- **Streams practice (S01)** has a built-in checker that prints `[DONE]` and a score. The solutions file (S02) uses the same checker and must print 8/8.
 
 ## Writing the `.md` lesson
 
@@ -86,7 +88,9 @@ Use simple English and short sentences, and explain each term the first time it 
 - **Short header comment:** tell the user to read the `.md` first, and give the run command `java <folder>/<File>.java`.
 - **`main` runs `step("Step N: ...")` sections** with the same numbers and the same example values as the `.md`. The printed numbers have to match the `.md` exactly, so run it and check.
 - **Keep the code easy to read** for someone who knows Java 8 to 17, and comment any newer syntax. Print ASCII only, because of the Windows console. Use no external libraries.
-- **Deliberate mistakes:** when the code shows a mistake on purpose, say so in a comment. If javac warns about it, name the warning in the comment as a teaching point rather than adding `@SuppressWarnings`. The VS Code Java extension flags suppression tokens it doesn't know.
+- **Deliberate mistakes:** when the code shows a mistake on purpose, say so in a comment. If javac warns about it, name the warning in the comment as a teaching point, as J02 does for `overrides` and J07 for `divzero`. Only use `@SuppressWarnings` with tokens that both javac and the VS Code Java extension understand, such as `finally`, `serial`, `unchecked` and `rawtypes`. The extension flags any token it doesn't know.
+- **Make the example show the point.** If the lesson depends on list order or on a race between threads, arrange the data so the effect is visible. In J08, findFirst stopped on the very first element until the list was reordered to show it skipping the last two. Races and lazy singletons get a small `sleep` so they fail every run, not just sometimes.
+- **Check follow-up claims too.** Run a quick throwaway program in the scratchpad for any number you quote in a follow-up, such as J08's int overflow value.
 
 ## Verify before you reply
 

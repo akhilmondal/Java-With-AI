@@ -56,7 +56,7 @@ Java With AI/
 ## How to run
 
 - **Java** (JDK 25 is installed): open the VS Code terminal in this folder and run `java 01-java-core/J01_HashMapInternals.java`, or click **Run** above `main()`.
-- **SQL**: Postgres isn't installed on this laptop. Paste `Q00_setup.sql` and then a query into an online PostgreSQL editor such as db-fiddle.com (choose PostgreSQL), or install PostgreSQL locally.
+- **SQL**: Postgres isn't installed on this laptop. On db-fiddle.com, choose PostgreSQL, paste `03-sql/Q00_setup.sql` into the left box and a problem file into the right box, then click Run. Each problem file lists the expected result under every query.
 
 ---
 
@@ -75,21 +75,21 @@ Java With AI/
 
 - [ ] **J01** HashMap internals: hashing, buckets, collisions, treeify, resize → read [J01_HashMapInternals.md](01-java-core/J01_HashMapInternals.md), run [J01_HashMapInternals.java](01-java-core/J01_HashMapInternals.java)
 - [ ] **J02** equals/hashCode contract, and what breaks if you override only one → read [J02_EqualsAndHashCode.md](01-java-core/J02_EqualsAndHashCode.md), run [J02_EqualsAndHashCode.java](01-java-core/J02_EqualsAndHashCode.java)
-- [ ] **J03** String immutability, string pool, StringBuilder vs StringBuffer → `J03_StringsAndStringPool` .md + .java
-- [ ] **J04** ArrayList vs LinkedList; HashMap vs LinkedHashMap vs TreeMap → `J04_ListsAndMaps` .md + .java
-- [ ] **J05** ConcurrentHashMap vs Collections.synchronizedMap; volatile vs synchronized → `J05_ConcurrencyBasics` .md + .java
-- [ ] **J06** ExecutorService, Future, CompletableFuture → `J06_ExecutorsAndCompletableFuture` .md + .java
-- [ ] **J07** Checked vs unchecked exceptions, try-with-resources, custom exceptions → `J07_Exceptions` .md + .java
-- [ ] **J08** Comparable vs Comparator; map vs flatMap; intermediate vs terminal operations; Optional → `J08_ComparatorStreamsOptional` .md + .java
-- [ ] **J09** JVM memory (heap, stack, metaspace), GC basics, OutOfMemoryError vs StackOverflowError → `J09_JvmMemoryAndGc` .md + .java
-- [ ] **J10** SOLID with an example from your own code; interface vs abstract class; immutable class → `J10_SolidAndImmutability` .md + .java
-- [ ] ⭐ **J11** Modern Java (8 to 21): lambdas, functional interfaces, records, switch expressions, virtual threads → `J11_ModernJavaFeatures` .md + .java
-- [ ] ⭐ **J12** Design patterns: Singleton, Builder, Factory, Strategy → `J12_DesignPatterns` .md + .java
+- [ ] **J03** String immutability, string pool, StringBuilder vs StringBuffer → read [J03_StringsAndStringPool.md](01-java-core/J03_StringsAndStringPool.md), run [J03_StringsAndStringPool.java](01-java-core/J03_StringsAndStringPool.java)
+- [ ] **J04** ArrayList vs LinkedList; HashMap vs LinkedHashMap vs TreeMap → read [J04_ListsAndMaps.md](01-java-core/J04_ListsAndMaps.md), run [J04_ListsAndMaps.java](01-java-core/J04_ListsAndMaps.java)
+- [ ] **J05** ConcurrentHashMap vs Collections.synchronizedMap; volatile vs synchronized → read [J05_ConcurrencyBasics.md](01-java-core/J05_ConcurrencyBasics.md), run [J05_ConcurrencyBasics.java](01-java-core/J05_ConcurrencyBasics.java)
+- [ ] **J06** ExecutorService, Future, CompletableFuture → read [J06_ExecutorsAndCompletableFuture.md](01-java-core/J06_ExecutorsAndCompletableFuture.md), run [J06_ExecutorsAndCompletableFuture.java](01-java-core/J06_ExecutorsAndCompletableFuture.java)
+- [ ] **J07** Checked vs unchecked exceptions, try-with-resources, custom exceptions → read [J07_Exceptions.md](01-java-core/J07_Exceptions.md), run [J07_Exceptions.java](01-java-core/J07_Exceptions.java)
+- [ ] **J08** Comparable vs Comparator; map vs flatMap; intermediate vs terminal operations; Optional → read [J08_ComparatorStreamsOptional.md](01-java-core/J08_ComparatorStreamsOptional.md), run [J08_ComparatorStreamsOptional.java](01-java-core/J08_ComparatorStreamsOptional.java)
+- [ ] **J09** JVM memory (heap, stack, metaspace), GC basics, OutOfMemoryError vs StackOverflowError → read [J09_JvmMemoryAndGc.md](01-java-core/J09_JvmMemoryAndGc.md), run [J09_JvmMemoryAndGc.java](01-java-core/J09_JvmMemoryAndGc.java)
+- [ ] **J10** SOLID with an example from your own code; interface vs abstract class; immutable class → read [J10_SolidAndImmutability.md](01-java-core/J10_SolidAndImmutability.md), run [J10_SolidAndImmutability.java](01-java-core/J10_SolidAndImmutability.java)
+- [ ] ⭐ **J11** Modern Java (8 to 21): lambdas, functional interfaces, records, switch expressions, virtual threads → read [J11_ModernJavaFeatures.md](01-java-core/J11_ModernJavaFeatures.md), run [J11_ModernJavaFeatures.java](01-java-core/J11_ModernJavaFeatures.java)
+- [ ] ⭐ **J12** Design patterns: Singleton, Builder, Factory, Strategy → read [J12_DesignPatterns.md](01-java-core/J12_DesignPatterns.md), run [J12_DesignPatterns.java](01-java-core/J12_DesignPatterns.java)
 
 ### Part 2 · Java 8 streams (Sat, 2 h) → `02-java8-streams/`
 
-- [ ] **S00** Streams toolkit: groupingBy, counting, partitioningBy, maxBy, Comparator chains → `S00_StreamsToolkit.java`
-- [ ] **S01** Practice the 8 programs yourself, 10 minutes each before looking anything up → `S01_StreamPractice.java`
+- [ ] **S00** Streams toolkit: groupingBy, counting, partitioningBy, maxBy, toMap, plus a hint sheet → read [S00_StreamsToolkit.md](02-java8-streams/S00_StreamsToolkit.md), run [S00_StreamsToolkit.java](02-java8-streams/S00_StreamsToolkit.java)
+- [ ] **S01** Practice the 8 programs yourself, 10 minutes each before looking anything up. It has a built-in checker that shows [DONE] and your score → [S01_StreamPractice.java](02-java8-streams/S01_StreamPractice.java)
   1. Character frequency in a string
   2. First non-repeated character
   3. Duplicate elements in a list
@@ -98,24 +98,24 @@ Java With AI/
   6. Highest-paid employee per department
   7. Employees sorted by salary descending, then by name
   8. Numbers partitioned into even and odd
-- [ ] **S02** Check against the solutions, only after you've tried → `S02_StreamSolutions.java`
+- [ ] **S02** Check against the solutions, only after you've tried. Includes a second way for some problems and the classic mistakes → [S02_StreamSolutions.java](02-java8-streams/S02_StreamSolutions.java)
 
 ### Part 3 · SQL in PostgreSQL (Sat, 1.5 h) → `03-sql/`
 
-- [ ] **Q00** Setup: tables and sample data → `Q00_setup.sql`
-- [ ] **Q01** Nth highest salary, with DENSE_RANK and with LIMIT/OFFSET → `Q01_nth_highest_salary.sql`
-- [ ] **Q02** Highest salary per department → `Q02_highest_salary_per_department.sql`
-- [ ] **Q03** Employees earning above their department average → `Q03_above_department_average.sql`
-- [ ] **Q04** Duplicate emails with GROUP BY and HAVING → `Q04_duplicate_emails.sql`
-- [ ] **Q05** Each employee with their manager's name (self-join) → `Q05_employee_manager_self_join.sql`
-- [ ] **Q06** Departments with zero employees (LEFT JOIN) → `Q06_departments_without_employees.sql`
-- [ ] ⭐ **Q07** Indexes, ACID, transaction isolation levels → `Q07_indexes_acid_isolation.sql`
+- [ ] **Q00** SQL toolkit (run order, JOINs, GROUP BY/HAVING, window functions, NULL) plus the setup script → read [Q00_sql_toolkit.md](03-sql/Q00_sql_toolkit.md), run [Q00_setup.sql](03-sql/Q00_setup.sql) first
+- [ ] **Q01** Nth highest salary, with DENSE_RANK and with LIMIT/OFFSET → [Q01_nth_highest_salary.sql](03-sql/Q01_nth_highest_salary.sql)
+- [ ] **Q02** Highest salary per department → [Q02_highest_salary_per_department.sql](03-sql/Q02_highest_salary_per_department.sql)
+- [ ] **Q03** Employees earning above their department average → [Q03_above_department_average.sql](03-sql/Q03_above_department_average.sql)
+- [ ] **Q04** Duplicate emails with GROUP BY and HAVING → [Q04_duplicate_emails.sql](03-sql/Q04_duplicate_emails.sql)
+- [ ] **Q05** Each employee with their manager's name (self-join) → [Q05_employee_manager_self_join.sql](03-sql/Q05_employee_manager_self_join.sql)
+- [ ] **Q06** Departments with zero employees (LEFT JOIN) → [Q06_departments_without_employees.sql](03-sql/Q06_departments_without_employees.sql)
+- [ ] ⭐ **Q07** Indexes, ACID, transaction isolation levels → [Q07_indexes_acid_isolation.sql](03-sql/Q07_indexes_acid_isolation.sql)
 
 ### Part 4 · DSA warm-up (Sat, 45 min) → `04-dsa/`
 
-- [ ] **D01** Two Sum → `D01_TwoSum.java`
-- [ ] **D02** Valid Anagram → `D02_ValidAnagram.java`
-- [ ] **D03** Longest Substring Without Repeating Characters → `D03_LongestSubstringWithoutRepeating.java`
+- [ ] **D01** Two Sum → [D01_TwoSum.java](04-dsa/D01_TwoSum.java) (your attempt, checked; brute force O(n²) vs HashMap O(n))
+- [ ] **D02** Valid Anagram → [D02_ValidAnagram.java](04-dsa/D02_ValidAnagram.java) (your attempt, checked; sorting O(n log n) vs counting O(n))
+- [ ] **D03** Longest Substring Without Repeating Characters → [D03_LongestSubstringWithoutRepeating.java](04-dsa/D03_LongestSubstringWithoutRepeating.java) (your attempt, checked; brute force O(n²) vs sliding window O(n))
 
 ### Part 5 · Spring Boot (Sun 27 Sep, 2.5 h) → `05-spring-boot/`
 
