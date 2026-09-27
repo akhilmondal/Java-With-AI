@@ -51,7 +51,7 @@
 
 
 -- ============================================================================
--- THE IDEA: LEFT JOIN keeps every department; "no match" shows up as NULLs
+-- THE IDEA: LEFT JOIN keeps every department, "no match" shows up as NULLs
 -- ============================================================================
 --   departments LEFT JOIN employees:
 --     PAYMENTS -> Meera, Rahul, Priya
@@ -168,7 +168,7 @@ SELECT name FROM departments WHERE id NOT IN (1, 2, 3, NULL);
 
 
 /* ============================================================================
-   HOW TO EXPLAIN IT IN THE INTERVIEW (your own words; cover these points)
+   HOW TO EXPLAIN IT IN THE INTERVIEW (your own words, cover these points)
      1. Start from departments and LEFT JOIN employees, so every department
         stays in the result.
      2. A department with no employees gets NULLs on the employee side, so I
@@ -190,7 +190,7 @@ SELECT name FROM departments WHERE id NOT IN (1, 2, 3, NULL);
      A: The mirror image: employees e LEFT JOIN departments d ... WHERE d.id IS NULL.
      Q: LEFT JOIN vs NOT EXISTS: which is faster?
      A: PostgreSQL usually plans both the same way (an "anti-join"). Choose the
-        clearest; check with EXPLAIN (Q07).
+        clearest, check with EXPLAIN (Q07).
      Q: RIGHT JOIN?
      A: The same idea with the sides swapped. Most people write every outer
         join as a LEFT JOIN, for readability.
@@ -205,3 +205,15 @@ SELECT name FROM departments WHERE id NOT IN (1, 2, 3, NULL);
 -- Answers: 1) an INNER JOIN keeps only matching rows, and SECURITY has none
 --          2) 1 and 0   3) in the ON clause
 --          4) one NULL in the list makes NOT IN return no rows
+
+-- QUICK REVISION START
+-- Q06 Departments with zero employees
+--   Query   : SELECT d.name FROM departments d LEFT JOIN employees e ON e.department_id = d.id
+--             WHERE e.id IS NULL                                    -> SECURITY
+--   Same    : WHERE NOT EXISTS (SELECT 1 FROM employees e WHERE e.department_id = d.id)
+--   Counts  : COUNT(e.id) with the LEFT JOIN -> SECURITY 0 (COUNT(*) wrongly gives 1)
+--   Trap 2  : a condition on employees in WHERE turns the LEFT JOIN into an INNER JOIN, put it in ON
+--   Trap 3  : NOT IN (..., NULL) returns nothing -> prefer NOT EXISTS
+--   30-second answer: "LEFT JOIN departments to employees so every department stays, then keep the rows
+--             where the employee side is NULL. NOT EXISTS works too, NOT IN is risky with NULLs."
+-- QUICK REVISION END

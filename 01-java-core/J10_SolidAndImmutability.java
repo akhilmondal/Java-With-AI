@@ -4,33 +4,43 @@ import java.util.List;
 import java.util.Map;
 
 /*
- * J10  SOLID, interface vs abstract class, immutable class: runnable demo
+ * J10  SOLID, interface vs abstract class, immutable class: a runnable demo
  *
- * Read J10_SolidAndImmutability.md first. This file runs the same steps so you
- * can see them happen. The step numbers match the .md file.
+ * WHAT YOU WILL SEE (the numbers match J10_SolidAndImmutability.md)
+ *   Step 1  S: validator, gateway, repository and notifier each do one job
+ *   Step 2  O: PayU 1020, Setu 1005, then Razorpay 1015 added as a NEW class only
+ *   Step 3  L: payBill() works for a savings account (3800) but breaks for a fixed deposit
+ *   Step 4  I: only gateways that implement Refundable get asked to refund
+ *   Step 5  D: the service accepts a fake gateway, because it depends on the interface
+ *   Step 6  an abstract class keeps state (calls = 2); an interface has a default method
+ *   Step 7  immutable: a defensive copy stays [UPI, BBPS]; the leaky one becomes [UPI, BBPS, REFUND]
  *
  * The gateway fees are made up for the example: PayU 2%, Setu a flat Rs 5,
  * Razorpay 1.5%.
  *
- * Run it:  java 01-java-core/J10_SolidAndImmutability.java
- *          (or click "Run" above main() in VS Code)
+ * HOW TO RUN   java 01-java-core/J10_SolidAndImmutability.java   (or click "Run" above main)
+ * READ FIRST   J10_SolidAndImmutability.md
  */
 public class J10_SolidAndImmutability {
 
     public static void main(String[] args) {
+        // Step 1 (S): the checkout only coordinates; each job lives in its own class.
         step("Step 1: S, single responsibility (one class, one job)");
         CheckoutService checkout = new CheckoutService(new PaymentValidator(), new PayUGateway(),
                 new PaymentRepository(), new NotificationService());
         checkout.checkout("TXN1001", 1000);
 
+        // Step 2 (O): a new gateway is a new class. PaymentService is never edited.
         step("Step 2: O, open for extension, closed for modification");
         PaymentService service = new PaymentService(List.of(new PayUGateway(), new SetuGateway()));
         System.out.println(service.pay("PAYU", 1000));   // 1000 + 2% = 1020
         System.out.println(service.pay("SETU", 1000));   // 1000 + 5 = 1005
-        // A new gateway = a new class. PaymentService is NOT edited.
         service = new PaymentService(List.of(new PayUGateway(), new SetuGateway(), new RazorpayGateway()));
         System.out.println(service.pay("RAZORPAY", 1000)); // 1000 + 1.5% = 1015
+        System.out.println("Notice: Razorpay was added as a new class; no existing class changed.");
 
+        // Step 3 (L): payBill() is written for ANY Account. A subclass that can't
+        // withdraw breaks it.
         step("Step 3: L, a subclass must work wherever the parent works");
         Account savings = new Account(5000);
         payBill(savings, 1200);
@@ -41,6 +51,7 @@ public class J10_SolidAndImmutability {
             System.out.println("FixedDepositAccount broke payBill(): " + e.getMessage());
         }
 
+        // Step 4 (I): refund is its own small interface, so Setu isn't forced to fake it.
         step("Step 4: I, small interfaces, so nobody implements what they can't do");
         for (PaymentGateway gateway : List.of(new PayUGateway(), new SetuGateway(), new RazorpayGateway())) {
             // "instanceof Refundable refundable" (Java 16+) checks the type and names it in one go
@@ -51,10 +62,13 @@ public class J10_SolidAndImmutability {
             }
         }
 
+        // Step 5 (D): the service depends on the PaymentGateway interface, so any
+        // implementation plugs in, including a fake for tests.
         step("Step 5: D, depend on the interface, so you can plug in anything");
         PaymentService testService = new PaymentService(List.of(new FakeGateway()));
         System.out.println(testService.pay("FAKE", 1000) + "  (a unit test needs no real PayU call)");
 
+        // Step 6: an abstract class can hold STATE and shared code; an interface can't hold state.
         step("Step 6: interface vs abstract class");
         PayUGateway payu = new PayUGateway();
         payu.pay(1000);
@@ -62,6 +76,7 @@ public class J10_SolidAndImmutability {
         System.out.println("BaseGateway (abstract class) keeps state: calls = " + payu.calls());   // 2
         System.out.println("PaymentGateway (interface) default method: " + payu.describe());
 
+        // Step 7: an immutable class copies what it's given, so the caller can't change it later.
         step("Step 7: an immutable class");
         List<String> tags = new ArrayList<>(List.of("UPI", "BBPS"));
         LeakyPaymentRequest leaky = new LeakyPaymentRequest(tags);
@@ -76,6 +91,7 @@ public class J10_SolidAndImmutability {
         }
         PaymentRequest bigger = safe.withAmount(1500); // a "change" makes a NEW object
         System.out.println("safe.amount() = " + safe.amount() + ", bigger.amount() = " + bigger.amount());
+        System.out.println("Notice: final alone isn't enough; copy mutable inputs (List.copyOf).");
     }
 
     // =========================================================================

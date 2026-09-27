@@ -1,8 +1,12 @@
 # Q00 · SQL toolkit: how a query really runs, JOINs, GROUP BY/HAVING, window functions
 
-**Read this first (15 min).** Then paste [Q00_setup.sql](Q00_setup.sql) into db-fiddle.com (choose PostgreSQL, left box), paste any query from this page into the right box, and click Run.
+> **In one line:** A query **runs** in a different order from how you **write** it: FROM → WHERE → GROUP BY → HAVING → SELECT → ORDER BY → LIMIT. Once you see that, and how **JOINs**, **GROUP BY**, **window functions** and **NULL** behave, the six classic problems (Q01–Q06) are just these tools combined.
 
-Don't memorize syntax. Understand the 7 steps using the 8 employees below. Once you get those, the 6 problems (Q01 to Q06) are just these tools combined, and you can answer the theory questions ("WHERE vs HAVING?", "RANK vs DENSE_RANK?") in your own words.
+| ⏱️ Read | 🧪 Run | 🎯 Asked |
+|---|---|---|
+| 15 min | paste [Q00_setup.sql](Q00_setup.sql) into db-fiddle.com (PostgreSQL, left box), then any query below (right box) | Every backend round: "WHERE vs HAVING?", "RANK vs DENSE_RANK?", "types of JOIN?" |
+
+The running example is 8 employees and 4 departments:
 
 | id | name | salary | department | manager |
 |---|---|---|---|---|
@@ -19,46 +23,38 @@ A fourth department, **SECURITY**, has nobody in it yet.
 
 ---
 
-## The problem
+## 🧩 Words you need
 
-SQL rounds test two things: **writing** a few classic queries (Q01 to Q06), and **explaining** why they work. Most wrong answers come from not knowing the order in which the database runs a query, how JOINs treat missing rows, and how NULL behaves.
-
-## Real-life picture: an office with two registers
-
-- The **staff register** (employees) and the **department register** (departments).
-- **JOIN:** lay the two registers side by side and match the lines on the department number.
-  - **INNER JOIN:** keep only the lines that match in both registers.
-  - **LEFT JOIN:** keep **every** line of the left register, and leave blanks where nothing matches, like SECURITY, which has no staff.
-- **GROUP BY:** make one pile per department, then write **one summary line per pile**: how many people, total salary, highest salary.
-- **WHERE:** cross out single staff lines **before** making the piles.
-- **HAVING:** throw away whole piles **after** they're made.
-- **Window function:** write a rank next to each person **inside their pile**, without merging the lines into one.
-
-| Office | SQL |
+| Word | In one line |
 |---|---|
-| the two registers | the `employees` and `departments` tables |
-| matching lines on the department number | `JOIN ... ON e.department_id = d.id` |
-| only the lines that match | `INNER JOIN` (plain `JOIN`) |
-| every department, blanks if no staff | `LEFT JOIN` |
-| one pile per department, one summary line each | `GROUP BY` + `COUNT / SUM / AVG / MAX / MIN` |
-| crossing out lines before making piles | `WHERE` |
-| throwing away whole piles | `HAVING` |
-| a rank next to each person in their pile | `RANK() OVER (PARTITION BY ... ORDER BY ...)` |
+| **JOIN** | puts rows from two tables side by side where a condition matches |
+| **aggregate** | a function over many rows that gives one value: COUNT, SUM, AVG, MAX, MIN |
+| **GROUP BY** | makes one group ("pile") per value, then one result row per pile |
+| **window function** | calculates across rows (rank, average) but **keeps every row** |
+| **NULL** | "unknown", not zero and not empty. `NULL = NULL` is not true |
 
 ---
 
-## Step by step
+## 🖼️ Picture it: an office with two registers
+
+The **staff register** (employees) and the **department register** (departments):
+- **JOIN** means laying them side by side and matching lines on the department number.
+- **GROUP BY** means making piles by department and writing one summary line per pile.
+- **WHERE** crosses out single lines **before** the piles are made. **HAVING** throws away whole piles **after**.
+- A **window function** writes a rank next to each person **inside their pile**, and nothing gets merged.
+
+---
+
+## 🔬 How it works, step by step
 
 ### Step 1 · The order a query really runs in
 
-You **write** `SELECT` first, but the database **runs** it almost last:
-
-```text
-written:  SELECT ... FROM ... WHERE ... GROUP BY ... HAVING ... ORDER BY ... LIMIT
-runs as:  1 FROM + JOIN -> 2 WHERE -> 3 GROUP BY -> 4 HAVING -> 5 SELECT -> 6 DISTINCT -> 7 ORDER BY -> 8 LIMIT/OFFSET
+```mermaid
+flowchart LR
+    A["1 FROM + JOIN"] --> B["2 WHERE<br/>(rows)"] --> C["3 GROUP BY"] --> D["4 HAVING<br/>(groups)"] --> E["5 SELECT<br/>(window functions here)"] --> F["6 DISTINCT"] --> G["7 ORDER BY"] --> H["8 LIMIT / OFFSET"]
 ```
 
-Follow one query through, with numbers: "departments with at least 2 people earning more than 60,000":
+Follow one query: **departments with at least 2 people earning more than 60,000**.
 
 ```sql
 SELECT department_id, COUNT(*) AS people
@@ -69,91 +65,92 @@ HAVING COUNT(*) >= 2
 ORDER BY department_id;
 ```
 
-| Stage | What's left |
-|---|---|
-| 1 FROM | all 8 employees |
-| 2 WHERE salary > 60000 | Meera, Priya, Sneha, Vikram, Neha. Rahul, Amit and Karan (exactly 60,000, not more) are gone |
-| 3 GROUP BY department | dept 1: Meera, Priya · dept 2: Sneha · dept 3: Vikram, Neha |
-| 4 HAVING COUNT(*) >= 2 | dept 1 (**2**) and dept 3 (**2**). Dept 2 has only 1, so the whole pile is gone |
-| 5 SELECT | `department_id, people` |
+```mermaid
+flowchart LR
+    S1["FROM<br/>8 employees"] -->|"WHERE salary > 60000"| S2["5 left: Meera, Priya,<br/>Sneha, Vikram, Neha"]
+    S2 -->|"GROUP BY dept"| S3["dept 1: 2<br/>dept 2: 1<br/>dept 3: 2"]
+    S3 -->|"HAVING COUNT >= 2"| S4["dept 1: 2<br/>dept 3: 2"]
+```
 
-The result is **1 → 2** and **3 → 2**.
+👀 **Notice:** Karan (60,000) is removed by WHERE, because "more than" isn't "equal". BILLING's pile has only 1, so HAVING drops the **whole pile**. The result is **1 → 2** and **3 → 2**.
 
 This order explains three classic errors:
-- **You can't use `COUNT(*)` in WHERE.** WHERE runs before the piles exist. Use HAVING.
-- **You can't use a SELECT alias in WHERE.** The alias doesn't exist yet at step 2.
-- **You can't use a window function in WHERE.** Window functions run at step 5. Wrap the query in a subquery or CTE, then filter outside it (Q01, Q02).
+- `COUNT(*)` in **WHERE** is an error, because the piles don't exist yet. Use HAVING.
+- A SELECT **alias** in WHERE is an error, because the alias doesn't exist yet at step 2.
+- A **window function** in WHERE is an error, because it runs at step 5. Wrap it in a subquery or CTE (Q01, Q02).
 
 ### Step 2 · JOINs: which rows survive
 
-```sql
--- INNER JOIN: only departments that have staff
-SELECT d.name, COUNT(e.id) AS people
-FROM departments d
-JOIN employees e ON e.department_id = d.id
-GROUP BY d.name
-ORDER BY d.name;
--- BILLING 3 · PAYMENTS 3 · UI 2          (SECURITY is missing)
-
--- LEFT JOIN: every department, with blanks (NULL) where nothing matched
-SELECT d.name, COUNT(e.id) AS people
-FROM departments d
-LEFT JOIN employees e ON e.department_id = d.id
-GROUP BY d.name
-ORDER BY d.name;
--- BILLING 3 · PAYMENTS 3 · SECURITY 0 · UI 2
+```mermaid
+flowchart LR
+    subgraph D["departments"]
+        d1["PAYMENTS"]
+        d2["BILLING"]
+        d3["UI"]
+        d4["SECURITY"]
+    end
+    subgraph E["employees"]
+        e1["Meera, Rahul, Priya"]
+        e2["Sneha, Amit, Karan"]
+        e3["Vikram, Neha"]
+    end
+    d1 --- e1
+    d2 --- e2
+    d3 --- e3
+    d4 -.- N["no match: NULLs<br/>kept only by LEFT JOIN"]
 ```
 
-| JOIN | Keeps |
-|---|---|
-| `INNER JOIN` | only rows that match on both sides |
-| `LEFT JOIN` | every row from the left table; NULLs where the right side has no match |
-| `RIGHT JOIN` | every row from the right table (the same as a LEFT JOIN with the tables swapped) |
-| `FULL JOIN` | every row from both sides |
-| `CROSS JOIN` | every row paired with every row: 4 departments × 8 employees = 32 rows |
-| self join | a table joined to itself, like employee → manager (Q05) |
+| JOIN | Keeps | Head count per department |
+|---|---|---|
+| `INNER JOIN` | only rows that match on both sides | BILLING 3, PAYMENTS 3, UI 2 (**no SECURITY**) |
+| `LEFT JOIN` | every left row, with NULLs where there's no match | BILLING 3, PAYMENTS 3, **SECURITY 0**, UI 2 |
+| `RIGHT JOIN` | every right row | the same as LEFT with the tables swapped |
+| `FULL JOIN` | every row from both sides | |
+| `CROSS JOIN` | every pair | 4 × 8 = **32** rows |
+| self join | a table joined to itself | employee → manager (Q05) |
 
-### Step 3 · GROUP BY and the aggregate functions
+### Step 3 · GROUP BY and the aggregates
 
-```sql
-SELECT d.name AS department,
-       COUNT(*)               AS people,
-       SUM(e.salary)          AS total,
-       ROUND(AVG(e.salary), 2) AS average,
-       MAX(e.salary)          AS highest,
-       MIN(e.salary)          AS lowest
-FROM employees e
-JOIN departments d ON d.id = e.department_id
-GROUP BY d.name
-ORDER BY d.name;
+```mermaid
+flowchart LR
+    E["8 employees"] --> P1["PAYMENTS pile<br/>3 people, total 210000<br/>avg 70000, max 90000"]
+    E --> P2["BILLING pile<br/>3 people, total 180000<br/>avg 60000, max 90000"]
+    E --> P3["UI pile<br/>2 people, total 145000<br/>avg 72500, max 75000"]
 ```
 
-| department | people | total | average | highest | lowest |
-|---|---|---|---|---|---|
-| BILLING | 3 | 180,000 | 60,000.00 | 90,000 | 30,000 |
-| PAYMENTS | 3 | 210,000 | 70,000.00 | 90,000 | 40,000 |
-| UI | 2 | 145,000 | 72,500.00 | 75,000 | 70,000 |
+```sql
+SELECT d.name AS department, COUNT(*) AS people, SUM(e.salary) AS total,
+       ROUND(AVG(e.salary), 2) AS average, MAX(e.salary) AS highest, MIN(e.salary) AS lowest
+FROM employees e JOIN departments d ON d.id = e.department_id
+GROUP BY d.name ORDER BY d.name;
+```
 
-**The rule:** every column in SELECT must be either **in the GROUP BY** or **inside an aggregate**. `SELECT department_id, name, MAX(salary) ... GROUP BY department_id` is an error in PostgreSQL, because a pile has 3 names and the database can't know which one you mean (Q02).
+⚠️ **The rule:** every selected column must be **in the GROUP BY** or **inside an aggregate**. `SELECT department_id, name, MAX(salary) … GROUP BY department_id` is an error, because each pile has several names (Q02).
 
 ### Step 4 · WHERE vs HAVING
 
-- **WHERE** filters **rows**, before grouping. It can't use aggregates.
-- **HAVING** filters **groups**, after grouping. It usually uses aggregates.
+| | WHERE | HAVING |
+|---|---|---|
+| Filters | **rows** | **groups** |
+| Runs | **before** GROUP BY | **after** GROUP BY |
+| Can use aggregates? | ❌ | ✅ usually does |
 
 Step 1's query used both: `WHERE salary > 60000` removed people, then `HAVING COUNT(*) >= 2` removed BILLING's pile.
 
-### Step 5 · Window functions: rank inside the pile, keep every line
+### Step 5 · Window functions: rank inside the pile, keep every row
 
-GROUP BY squashes each pile into one line. A **window function** computes across the pile but **keeps every row**:
+```mermaid
+flowchart LR
+    G["GROUP BY dept<br/>8 rows become 3 rows<br/>(names are lost)"]
+    W["RANK() OVER (PARTITION BY dept)<br/>8 rows stay 8 rows<br/>(a rank is added to each)"]
+```
 
 ```sql
 SELECT name, salary,
        ROW_NUMBER() OVER (ORDER BY salary DESC, name) AS row_num,
        RANK()       OVER (ORDER BY salary DESC)       AS rank_num,
        DENSE_RANK() OVER (ORDER BY salary DESC)       AS dense_rank_num
-FROM employees
-ORDER BY salary DESC, name;
+FROM employees ORDER BY salary DESC, name;
 ```
 
 | name | salary | ROW_NUMBER | RANK | DENSE_RANK |
@@ -167,160 +164,162 @@ ORDER BY salary DESC, name;
 | Rahul | 40,000 | 7 | 7 | 6 |
 | Amit | 30,000 | 8 | 8 | 7 |
 
-Look at the tie at 90,000:
-- **ROW_NUMBER:** always 1, 2, 3, even for ties (the tie is broken by name here).
-- **RANK:** ties share a number, then it **skips** (1, 1, 3). This is like sports, where two gold medals mean no silver.
-- **DENSE_RANK:** ties share a number, with **no gaps** (1, 1, 2). This is the one for "Nth highest salary" (Q01).
+👀 **Notice the tie at 90,000:**
+- **ROW_NUMBER** never ties (1, 2, 3).
+- **RANK** shares the number, then **skips**, like two gold medals with no silver (1, 1, 3).
+- **DENSE_RANK** shares the number with **no gaps** (1, 1, 2). That's the one for "Nth highest" (Q01).
 
-**PARTITION BY** restarts the ranking in every pile:
-
-```sql
-SELECT d.name AS department, e.name, e.salary,
-       RANK() OVER (PARTITION BY e.department_id ORDER BY e.salary DESC) AS rank_in_dept
-FROM employees e
-JOIN departments d ON d.id = e.department_id
-ORDER BY department, rank_in_dept;
--- BILLING:  Sneha 1, Karan 2, Amit 3
--- PAYMENTS: Meera 1, Priya 2, Rahul 3
--- UI:       Neha 1, Vikram 2
-```
+**PARTITION BY** restarts the ranking for each department: BILLING gives Sneha 1, Karan 2, Amit 3; PAYMENTS gives Meera 1, Priya 2, Rahul 3; UI gives Neha 1, Vikram 2.
 
 ### Step 6 · Subquery vs CTE (`WITH`)
 
-A **CTE** (Common Table Expression) is a named subquery written **before** the main query, so the query reads top to bottom:
-
 ```sql
-WITH dept_totals AS (
+WITH dept_totals AS (                         -- a named subquery, written first
     SELECT department_id, SUM(salary) AS total
-    FROM employees
-    GROUP BY department_id
+    FROM employees GROUP BY department_id
 )
 SELECT d.name, t.total
-FROM dept_totals t
-JOIN departments d ON d.id = t.department_id
-WHERE t.total > 150000
-ORDER BY d.name;
--- BILLING 180000 · PAYMENTS 210000      (UI's 145000 is filtered out)
+FROM dept_totals t JOIN departments d ON d.id = t.department_id
+WHERE t.total > 150000 ORDER BY d.name;
+-- BILLING 180000, PAYMENTS 210000   (UI 145000 is filtered out)
 ```
 
-It gives the same result as a subquery, and it's easier to read and reuse. `WITH RECURSIVE` can even walk a tree, like the full reporting line in Q05.
+It gives the same result as a subquery, but it reads top to bottom. `WITH RECURSIVE` can walk a tree (Q05's reporting line).
 
 ### Step 7 · NULL: "unknown", not zero
 
-```sql
-SELECT name FROM employees WHERE manager_id = NULL;     -- no rows! NULL = NULL is not true
-SELECT name FROM employees WHERE manager_id IS NULL;    -- Meera
-SELECT COUNT(*) AS all_rows, COUNT(manager_id) AS with_manager FROM employees;   -- 8, 7
-```
-
-- Compare with `IS NULL` / `IS NOT NULL`, never with `=`.
-- `COUNT(*)` counts rows, but `COUNT(column)` **skips NULLs**. That's why Step 2's LEFT JOIN used `COUNT(e.id)`: it gives SECURITY **0**, where `COUNT(*)` would give 1 (Q06).
-- `NOT IN` with a NULL in the list returns **nothing** (Q06).
-- `COALESCE(x, 'default')` replaces a NULL: `COALESCE(m.name, 'No manager')` (Q05).
+| Query | Result | Why |
+|---|---|---|
+| `WHERE manager_id = NULL` | **no rows** | NULL = NULL is unknown, not true |
+| `WHERE manager_id IS NULL` | Meera | the right way |
+| `COUNT(*)` vs `COUNT(manager_id)` | 8 vs **7** | `COUNT(column)` skips NULLs |
+| `id NOT IN (1, 2, 3, NULL)` | **no rows** | one NULL makes NOT IN unknown (Q06) |
+| `COALESCE(m.name, 'No manager')` | "No manager" for Meera | replaces a NULL (Q05) |
 
 ---
 
-## How to explain it in the interview
+## ⚠️ Traps interviewers love
 
-Use your own words. When asked any SQL theory question, reach for these:
-
-1. **Run order:** FROM/JOIN, WHERE, GROUP BY, HAVING, SELECT, ORDER BY, LIMIT. That's why aggregates go in HAVING, not WHERE.
-2. **JOINs:** INNER keeps only matches. LEFT keeps every left row, with NULLs where there's no match (for example, departments with no employees).
-3. **GROUP BY:** one row per group. Every selected column must be grouped or aggregated.
-4. **Window functions:** calculate across a group but keep every row. ROW_NUMBER is always unique, RANK leaves gaps after ties, DENSE_RANK has no gaps.
-5. **NULL:** use IS NULL. COUNT(column) skips NULLs. Watch out for NOT IN with NULLs.
-
-**Here's how it can sound** ("WHERE vs HAVING", about 30 seconds):
-
-> "WHERE filters individual rows before grouping, and HAVING filters groups after GROUP BY. For example, to find departments with at least two people earning over 60,000, I put salary > 60000 in WHERE to remove low earners first, then GROUP BY department, then HAVING COUNT(*) >= 2 to drop the departments with fewer than two. You can't use COUNT in WHERE, because WHERE runs before the groups exist."
-
-**Tip:** for any query on a whiteboard, say the run order out loud. It shows you understand it, not just the syntax.
+| Trap | Why it's wrong | Do this instead |
+|---|---|---|
+| `WHERE COUNT(*) > 1` | WHERE runs before grouping | `HAVING COUNT(*) > 1` |
+| Selecting a non-grouped column | ambiguous: a pile has many values | group by it, or aggregate it |
+| `= NULL` | never true | `IS NULL` |
+| `COUNT(*)` after a LEFT JOIN | counts the NULL row as 1 | `COUNT(right_table.id)` |
+| RANK for "Nth highest" | it skips numbers after ties | DENSE_RANK |
 
 ---
 
-## Follow-up questions (simple answers)
+## 🎯 In the interview
 
-**DELETE vs TRUNCATE vs DROP?**
-- `DELETE` removes chosen rows (it can have a WHERE), fires triggers and can be rolled back.
-- `TRUNCATE` quickly empties the whole table.
-- `DROP` removes the table itself.
+**What they're really testing**
+- *Service companies:* JOIN types, WHERE vs HAVING, GROUP BY, and writing the 6 classic queries.
+- *Product companies:* run order, window functions with ties, NULL traps (NOT IN, COUNT), CTEs, and **why** a query is slow (indexes, EXPLAIN in Q07).
 
-**UNION vs UNION ALL?**
-`UNION` removes duplicate rows, which costs a sort or hash. `UNION ALL` keeps everything and is faster. Use UNION ALL unless you really need de-duplication.
+**Say it in this order** (for any SQL theory question):
+1. **Run order:** FROM/JOIN, WHERE, GROUP BY, HAVING, SELECT, ORDER BY, LIMIT.
+2. **JOINs:** INNER keeps only matches. LEFT keeps every left row, with NULLs.
+3. **GROUP BY:** one row per group, and every selected column must be grouped or aggregated.
+4. **Window functions** keep every row. ROW_NUMBER is unique, RANK has gaps, DENSE_RANK has none.
+5. **NULL:** use IS NULL. COUNT(column) skips NULLs. NOT IN with a NULL returns nothing.
+
+**Sample answer** ("WHERE vs HAVING", about 30 seconds):
+
+> "WHERE filters individual rows before grouping, and HAVING filters groups after GROUP BY. For example, to find departments with at least two people earning over 60,000, I put salary > 60000 in WHERE to remove low earners first, then GROUP BY department, then HAVING COUNT(*) >= 2. You can't use COUNT in WHERE, because WHERE runs before the groups exist."
+
+**Product-company deep dive:**
+- **Q: DELETE vs TRUNCATE vs DROP?**
+  **A:** DELETE removes chosen rows (with WHERE), fires triggers and can roll back. TRUNCATE quickly empties the table. DROP removes the table itself.
+- **Q: UNION vs UNION ALL?**
+  **A:** UNION removes duplicates, which costs a sort or hash. UNION ALL keeps everything and is faster. Use UNION ALL unless you need de-duplication.
+- **Q: Normalization, in one line each?**
+  **A:** 1NF: one value per cell. 2NF: every column depends on the whole key. 3NF: no column depends on another non-key column (store `department_id`, not `department_name`).
+
+---
+
+## ❓ Follow-up questions
 
 **PRIMARY KEY vs UNIQUE?**
-Both reject duplicates. A table has **one** primary key, which also can't be NULL. It can have many UNIQUE constraints, and in PostgreSQL a UNIQUE column can hold several NULLs.
+Both reject duplicates. There's one primary key per table, and it can't be NULL. A table can have many UNIQUE constraints.
 
 **What does a FOREIGN KEY do?**
-It makes sure a value exists in another table. `employees.department_id` must be a real `departments.id`, so you can't point at a department that doesn't exist.
-
-**Normalization, in one line each?**
-- **1NF:** one value per cell, no lists in a column.
-- **2NF:** every column depends on the whole key.
-- **3NF:** no column depends on another non-key column. For example, don't store `department_name` in employees; store `department_id` and join.
+It makes sure the value exists in the other table: `employees.department_id` must be a real `departments.id`.
 
 **What's a view?**
-A saved query that you can use like a table. It stores no data itself, unless it's a materialized view.
-
-**CHAR vs VARCHAR?**
-CHAR(n) is always padded to n characters. VARCHAR(n) stores only what you give it, up to n. In PostgreSQL, TEXT and VARCHAR perform the same.
-
-*Only if they push further:* PostgreSQL has `DISTINCT ON` (Q02) and `FILTER`, as in `COUNT(*) FILTER (WHERE salary > 60000)`. Both are shortcuts that aren't in standard SQL.
+A saved query you can use like a table. It stores no data itself, unless it's a materialized view.
 
 ---
 
-## Numbers to remember
+## 🧪 Test yourself (answer aloud, then click)
 
-| What | Result |
-|---|---|
-| People per department | PAYMENTS 3, BILLING 3, UI 2, SECURITY 0 |
-| Average salary | PAYMENTS 70,000, BILLING 60,000, UI 72,500 |
-| Tie at the top | Meera and Sneha, 90,000 each |
-| RANK / DENSE_RANK for Priya | 3 / 2 |
-| `COUNT(*)` vs `COUNT(manager_id)` | 8 vs 7 |
+<details><summary>1. Order these by when they run: SELECT, WHERE, GROUP BY, HAVING, FROM, ORDER BY.</summary>
 
-## Self-check (answer aloud, then click to check)
-
-<details><summary>1. In what order does a query run: SELECT, WHERE, GROUP BY, HAVING, FROM, ORDER BY?</summary>
-
-FROM, WHERE, GROUP BY, HAVING, SELECT, ORDER BY. After that come DISTINCT (before ORDER BY) and LIMIT/OFFSET (at the very end).
+FROM, WHERE, GROUP BY, HAVING, SELECT, ORDER BY.
 
 </details>
 
-<details><summary>2. Why is "WHERE COUNT(*) > 1" an error?</summary>
+<details><summary>2. After a LEFT JOIN from departments, what does COUNT(e.id) give SECURITY? And COUNT(*)?</summary>
 
-WHERE runs before GROUP BY, so the groups, and their counts, don't exist yet. Use HAVING COUNT(*) > 1.
-
-</details>
-
-<details><summary>3. Departments LEFT JOIN employees, then COUNT(e.id) per department: what does SECURITY get? And with COUNT(*)?</summary>
-
-0 with COUNT(e.id). With COUNT(*) it gets 1, because the LEFT JOIN makes one row for SECURITY with NULL employee columns.
+0 and 1.
 
 </details>
 
-<details><summary>4. What are RANK and DENSE_RANK for Priya (80,000), who comes after two people at 90,000?</summary>
+<details><summary>3. What are RANK and DENSE_RANK for Priya (80,000), after two people at 90,000?</summary>
 
-RANK 3 (it skips 2), DENSE_RANK 2 (no gaps).
-
-</details>
-
-<details><summary>5. What's the average salary in BILLING, and who earns more than it?</summary>
-
-(90,000 + 30,000 + 60,000) / 3 = 60,000. Only Sneha. Karan is exactly 60,000, which isn't "more than".
+RANK 3, DENSE_RANK 2.
 
 </details>
 
-<details><summary>6. How many rows does "departments CROSS JOIN employees" give?</summary>
+<details><summary>4. What's BILLING's average, and who is above it?</summary>
+
+(90,000 + 30,000 + 60,000) / 3 = 60,000. Only Sneha; Karan equals it.
+
+</details>
+
+<details><summary>5. How many rows does departments CROSS JOIN employees give?</summary>
 
 4 × 8 = 32.
 
 </details>
 
-<details><summary>7. What does WHERE manager_id = NULL return, and what should you write instead?</summary>
+When they all feel easy, tick Q00 in the [README](../README.md) and start [Q01](Q01_nth_highest_salary.sql).
 
-It returns no rows, because NULL = NULL is unknown, not true. Write WHERE manager_id IS NULL instead, which gives Meera.
+---
 
-</details>
+## ⚡ Quick Revision (2 hours before the interview)
 
-If you get stuck on any of them, add it to [STUMBLE-LIST.md](../STUMBLE-LIST.md). When all 7 feel easy, tick Q00 in the [README](../README.md) and start Q01.
+```mermaid
+flowchart LR
+    A["FROM/JOIN"] --> B["WHERE rows"] --> C["GROUP BY"] --> D["HAVING groups"] --> E["SELECT + windows"] --> F["ORDER BY"] --> G["LIMIT"]
+```
+
+**🧠 Must remember: the concepts**
+1. **Run order:** FROM, WHERE, GROUP BY, HAVING, SELECT, DISTINCT, ORDER BY, LIMIT. So aggregates go in **HAVING**, and window functions need a subquery to filter.
+2. **INNER JOIN** keeps matches only. **LEFT JOIN** keeps all left rows (NULLs), so SECURITY shows **0** with `COUNT(e.id)`.
+3. **GROUP BY:** every selected column must be grouped or aggregated.
+4. **ROW_NUMBER** 1,2,3 · **RANK** 1,1,3 · **DENSE_RANK** 1,1,2. **PARTITION BY** restarts per group.
+5. **NULL:** use `IS NULL`. `COUNT(col)` skips NULLs. `NOT IN (…, NULL)` returns nothing. Use `COALESCE` for defaults.
+
+**🧠 Must remember: the six problems in one line each**
+| # | Problem | Pattern |
+|---|---|---|
+| Q01 | Nth highest salary | `DENSE_RANK() OVER (ORDER BY salary DESC)` = N, or `DISTINCT … LIMIT 1 OFFSET N-1`. 2nd = **80,000** |
+| Q02 | Highest per department | `MAX` + GROUP BY for the amount. `DENSE_RANK() OVER (PARTITION BY dept …)` = 1 for the person |
+| Q03 | Above department average | CTE of `AVG` per dept, joined back, `salary > avg`. Meera, Priya, Sneha, Neha |
+| Q04 | Duplicate emails | `GROUP BY email HAVING COUNT(*) > 1`. anu 2, ravi 3 |
+| Q05 | Employee + manager | `employees e LEFT JOIN employees m ON m.id = e.manager_id` |
+| Q06 | Departments with no employees | `LEFT JOIN … WHERE e.id IS NULL`, or `NOT EXISTS`. SECURITY |
+
+**⚠️ Top traps**
+- COUNT in WHERE.
+- RANK for "Nth highest".
+- A condition on the right table in WHERE turns a LEFT JOIN into an INNER JOIN.
+
+**🎯 30-second answer ("WHERE vs HAVING"):** "WHERE filters rows before grouping; HAVING filters groups after. So salary > 60000 goes in WHERE, and COUNT(*) >= 2 goes in HAVING, because the counts don't exist until GROUP BY has run."
+
+**🔑 Memory hook:** *"Registers side by side (JOIN), piles with one label each (GROUP BY), cross out lines before the piles (WHERE), throw away piles after (HAVING), and write a rank on each line without merging (window)."*
+
+**🗣️ Say it aloud (no peeking):**
+1. Walk the "at least 2 people over 60,000" query through the run order, with the numbers.
+2. RANK vs DENSE_RANK vs ROW_NUMBER, on the 90,000 tie.
+3. Why does NOT IN with a NULL return no rows?

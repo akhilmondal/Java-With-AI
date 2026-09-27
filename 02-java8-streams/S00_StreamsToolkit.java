@@ -10,13 +10,20 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 /*
- * S00  Streams toolkit: the collectors you need for the 8 programs (runnable demo)
+ * S00  Streams toolkit: the collectors you need for the 8 programs (a runnable demo)
  *
- * Read S00_StreamsToolkit.md first. This file runs the same steps so you can
- * see them happen. The step numbers match the .md file.
+ * WHAT YOU WILL SEE (the numbers match S00_StreamsToolkit.md)
+ *   Step 1  toList() and joining()
+ *   Step 2  groupingBy: by status; counting {FAILED=2, PENDING=1, SUCCESS=3}; summing 1100/300/17000
+ *   Step 3  maxBy per group, unwrapped with collectingAndThen: FAILED=TXN6, SUCCESS=TXN4
+ *   Step 4  partitioningBy(amount > 1000): exactly two groups, true and false
+ *   Step 5  toMap, and the duplicate-key trap (TXN1 twice) fixed with a merge rule
+ *   Step 6  count, then filter the counts; LinkedHashMap::new keeps first-seen order
+ *   Step 7  numbers: sum 18400, statistics, top 3, rangeClosed
+ *   Step 8  a String as a stream of characters
  *
- * Run it:  java 02-java8-streams/S00_StreamsToolkit.java
- *          (or click "Run" above main() in VS Code)
+ * HOW TO RUN   java 02-java8-streams/S00_StreamsToolkit.java   (or click "Run" above main)
+ * READ FIRST   S00_StreamsToolkit.md
  */
 public class S00_StreamsToolkit {
 
@@ -37,6 +44,7 @@ public class S00_StreamsToolkit {
             new Payment("TXN6", 650, "FAILED", "UPI"));
 
     public static void main(String[] args) {
+        // Step 1: the simplest terminal steps: a list, or one joined String.
         step("Step 1: collect the results with toList() and joining()");
         List<String> successIds = PAYMENTS.stream()
                 .filter(p -> p.status().equals("SUCCESS"))
@@ -48,6 +56,8 @@ public class S00_StreamsToolkit {
                 .collect(Collectors.joining(", "));          // one String, with ", " between items
         System.out.println("joining(\", \")  : " + allIds);
 
+        // Step 2: groupingBy sorts items into bins. The optional 2nd argument
+        // (the "downstream collector") says what to do with each bin.
         step("Step 2: groupingBy, sorting into bins");
         Map<String, List<Payment>> byStatus = PAYMENTS.stream()
                 .collect(Collectors.groupingBy(Payment::status));                         // status -> its payments
@@ -64,6 +74,7 @@ public class S00_StreamsToolkit {
         System.out.println("groupingBy(status, summingInt(amt)): " + sorted(sumByStatus));
         System.out.println("groupingBy(mode, mapping(id))      : " + sorted(idsByMode));
 
+        // Step 3: the biggest item in each bin. maxBy gives an Optional; unwrap it.
         step("Step 3: the biggest in each bin, maxBy and collectingAndThen");
         Map<String, Optional<Payment>> maxAsOptional = PAYMENTS.stream()
                 .collect(Collectors.groupingBy(Payment::status,
@@ -76,6 +87,7 @@ public class S00_StreamsToolkit {
         System.out.println("maxBy                      : " + sorted(maxAsOptional));
         System.out.println("collectingAndThen(get)     : " + sorted(maxPayment));
 
+        // Step 4: partitioningBy = exactly two bins, true and false.
         step("Step 4: partitioningBy, exactly two bins: true and false");
         Map<Boolean, List<Payment>> bigOrNot = PAYMENTS.stream()
                 .collect(Collectors.partitioningBy(p -> p.amount() > 1_000));
@@ -84,6 +96,8 @@ public class S00_StreamsToolkit {
         System.out.println("partitioningBy(amount > 1000)            : " + bigOrNot);
         System.out.println("partitioningBy(amount > 1000, counting()): " + bigOrNotCount);
 
+        // Step 5: toMap builds a map directly, but a duplicate key throws unless
+        // you give a merge rule.
         step("Step 5: toMap, and the duplicate-key trap");
         Map<String, Integer> amountById = PAYMENTS.stream()
                 .collect(Collectors.toMap(Payment::txnId, Payment::amount));
@@ -98,6 +112,7 @@ public class S00_StreamsToolkit {
                 .collect(Collectors.toMap(Payment::txnId, Payment::amount, (first, second) -> first));
         System.out.println("with a merge rule (keep first): " + sorted(keepFirst));
 
+        // Step 6: count first, then stream over the map's entries to filter the counts.
         step("Step 6: count, then filter the counts; choose the map type");
         Map<String, Long> countByMode = PAYMENTS.stream()
                 .collect(Collectors.groupingBy(Payment::mode, Collectors.counting()));
@@ -115,8 +130,9 @@ public class S00_StreamsToolkit {
         System.out.println("LinkedHashMap::new (first seen) : " + firstSeenOrder);
         System.out.println("toMap(id, identity()).get(TXN4) : " + byId.get("TXN4") + " with amount " + byId.get("TXN4").amount());
 
+        // Step 7: number streams (mapToInt) have sum(), average() and statistics built in.
         step("Step 7: numbers: sum, statistics, top 3, a range");
-        int total = PAYMENTS.stream().mapToInt(Payment::amount).sum();   // mapToInt gives sum(), average(), ...
+        int total = PAYMENTS.stream().mapToInt(Payment::amount).sum();
         IntSummaryStatistics stats = PAYMENTS.stream().mapToInt(Payment::amount).summaryStatistics();
         List<Integer> top3 = PAYMENTS.stream()
                 .map(Payment::amount)
@@ -130,8 +146,9 @@ public class S00_StreamsToolkit {
         System.out.println("top 3 amounts  : " + top3);
         System.out.println("rangeClosed(1,5): " + oneToFive);
 
+        // Step 8: chars() gives int CODES; turn them back into characters with mapToObj.
         step("Step 8: a String as a stream of characters");
-        List<Integer> codes = "BBPS".chars().boxed().toList();            // chars() gives int codes
+        List<Integer> codes = "BBPS".chars().boxed().toList();
         List<Character> letters = "BBPS".chars()
                 .mapToObj(c -> (char) c)                                   // turn each code back into a char
                 .toList();

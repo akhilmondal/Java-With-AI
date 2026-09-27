@@ -8,13 +8,19 @@ import java.util.TreeSet;
 import java.util.stream.Stream;
 
 /*
- * J08  Comparable vs Comparator, streams (map/flatMap, lazy), Optional: runnable demo
+ * J08  Comparable vs Comparator, streams (map/flatMap, lazy), Optional: a runnable demo
  *
- * Read J08_ComparatorStreamsOptional.md first. This file runs the same steps so
- * you can see them happen. The step numbers match the .md file.
+ * WHAT YOU WILL SEE (the numbers match J08_ComparatorStreamsOptional.md)
+ *   Step 1  Comparable: the natural order, by id: Rahul, Priya, Amit, Sneha
+ *   Step 2  Comparator: salary high->low, then name: Priya, Sneha, Amit, Rahul;
+ *           a TreeSet by salary only keeps 3 (Rahul and Amit tie)
+ *   Step 3  streams are lazy: nothing runs until findFirst, which checks only 2 people
+ *   Step 4  map gives 4 lists; flatMap gives 7 skills (5 distinct)
+ *   Step 5  a stream can be used only once
+ *   Step 6  Optional: orElse vs orElseGet (orElse runs its argument anyway)
  *
- * Run it:  java 01-java-core/J08_ComparatorStreamsOptional.java
- *          (or click "Run" above main() in VS Code)
+ * HOW TO RUN   java 01-java-core/J08_ComparatorStreamsOptional.java   (or click "Run" above main)
+ * READ FIRST   J08_ComparatorStreamsOptional.md
  */
 public class J08_ComparatorStreamsOptional {
 
@@ -37,12 +43,14 @@ public class J08_ComparatorStreamsOptional {
             new Employee(102, "Priya", 70_000, List.of("Angular", "Java")));
 
     public static void main(String[] args) {
+        // Step 1: Comparable is the ONE order built into the class (here: by id).
         step("Step 1: Comparable, the natural order (by id)");
         List<Employee> list = new ArrayList<>(EMPLOYEES);
         Collections.sort(list);                           // uses compareTo()
         System.out.println("sorted by id : " + names(list) + " " + ids(list));
         System.out.println("compareTo(101 vs 102) = " + list.get(0).compareTo(list.get(1)) + "  (negative: 101 comes first)");
 
+        // Step 2: a Comparator is an order written OUTSIDE the class. You can have many.
         step("Step 2: Comparator, any order you like, from outside the class");
         list.sort(Comparator.comparing(Employee::name));
         System.out.println("by name                      : " + names(list));
@@ -56,6 +64,8 @@ public class J08_ComparatorStreamsOptional {
         System.out.println("TreeSet by salary only has size " + bySalary.size()
                 + " (not 4: Rahul and Amit both earn 50000, so one is dropped)");
 
+        // Step 3: intermediate operations (filter, map) only DESCRIBE the work.
+        // The terminal operation (findFirst) pulls elements one by one and can stop early.
         step("Step 3: a stream is lazy; the terminal operation makes it run");
         Stream<Employee> pipeline = EMPLOYEES.stream()
                 .filter(e -> {
@@ -67,8 +77,9 @@ public class J08_ComparatorStreamsOptional {
         System.out.println("findFirst -> " + firstRich.map(Employee::name).orElse("none")
                 + " (stopped early: Amit and Priya were never checked)");
         int total = EMPLOYEES.stream().mapToInt(Employee::salary).sum();   // another terminal operation
-        System.out.println("sum of salaries = " + total);                   // 60000 + 50000 + 50000 + 70000
+        System.out.println("sum of salaries = " + total);                   // 50000 + 60000 + 50000 + 70000
 
+        // Step 4: map = one in, one out. flatMap = one in, many out, flattened.
         step("Step 4: map vs flatMap");
         List<List<String>> mapped = EMPLOYEES.stream()
                 .map(Employee::skills)                     // one employee -> ONE list
@@ -80,6 +91,7 @@ public class J08_ComparatorStreamsOptional {
         System.out.println("flatMap -> " + flat.size() + " items: " + flat);
         System.out.println("distinct-> " + flat.stream().distinct().toList());
 
+        // Step 5: a stream is a one-time trip, not a collection.
         step("Step 5: a stream can be used only once");
         Stream<String> names = EMPLOYEES.stream().map(Employee::name);
         System.out.println("first count: " + names.count());
@@ -89,6 +101,8 @@ public class J08_ComparatorStreamsOptional {
             System.out.println("second use -> IllegalStateException: " + e.getMessage());
         }
 
+        // Step 6: Optional is a box that may be empty. orElse ALWAYS evaluates its
+        // argument; orElseGet runs its lambda only when the box is empty.
         step("Step 6: Optional, a box that may be empty");
         System.out.println("findById(101) -> " + findById(101).map(Employee::name));     // Optional[Rahul]
         System.out.println("findById(999) -> " + findById(999).map(Employee::name));     // Optional.empty
@@ -107,6 +121,7 @@ public class J08_ComparatorStreamsOptional {
         System.out.println(" orElseGet:");
         rahul.orElseGet(() -> createDefault());            // createDefault() does NOT run
         System.out.println(" (nothing printed for orElseGet)");
+        System.out.println("Notice: use orElseGet when the default is expensive (a DB call).");
     }
 
     static Optional<Employee> findById(int id) {

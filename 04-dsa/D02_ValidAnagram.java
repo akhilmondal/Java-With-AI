@@ -210,3 +210,18 @@ public class D02_ValidAnagram {
  *  Answers: 1) both use the letters {a, b}, so a set-based check says true, but the counts differ
  *           2) 3 (slot 3)   3) O(n) time, O(1) space   4) true
  */
+
+/*
+ * QUICK REVISION START
+ * D02 Valid Anagram: do two strings use the same letters, the same number of times?
+ *   Idea    : a tally in int[26]: +1 for each letter of s, -1 for each letter of t; all zero = anagram
+ *   Picture : "listen" / "silent"   e i l n s t : +1 each, then -1 each -> all 0 -> true
+ *             "rat" / "car"          c ends at -1, t ends at +1         -> false
+ *   Cost    : sort both and compare O(n log n) | counting O(n) time, O(1) space (always 26 slots)
+ *   Traps   : check the lengths first | "aab" vs "abb" breaks set-based answers | Unicode or mixed case -> HashMap
+ *   30-second answer: "If the lengths differ it's false. Otherwise I count letters in an int array of 26:
+ *     plus one for the first string, minus one for the second. If every count is zero they're anagrams.
+ *     O(n) time and constant space. Sorting both also works but is O(n log n)."
+ *   Memory hook: a shopkeeper's tally: add for s, subtract for t, the books must balance to zero.
+ * QUICK REVISION END
+ */

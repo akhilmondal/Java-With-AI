@@ -57,6 +57,18 @@ INSERT INTO customers (id, email) VALUES
     (6, 'ravi@mail.com');
 
 /* ============================================================================
+   HOW THE TABLES CONNECT
+
+     departments (id, name)
+          1
+          |  department_id
+          *
+     employees (id, name, salary, department_id, manager_id)
+          ^                                          |
+          +------------- manager_id (self) ---------+     an employee's manager is another employee
+
+     customers (id, email)                                a separate table, used in Q04
+
    THE DATA AT A GLANCE
 
    departments           employees

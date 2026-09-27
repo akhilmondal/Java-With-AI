@@ -3,6 +3,7 @@
 **Interview:** Tue 29 Sep 2026 (Wed 30 Sep if they confirm Wednesday, see Part 9)
 **JD:** Full-stack developer, Angular + Java Spring Boot
 **Your plan:** [SPRINT-PLAN.md](SPRINT-PLAN.md) · **Your stumbles:** [STUMBLE-LIST.md](STUMBLE-LIST.md)
+**⚡ Last 2 hours before the interview:** [QUICK-REVISION.md](QUICK-REVISION.md), every lesson's revision section on one page
 
 ## How we work
 
@@ -23,6 +24,26 @@ We go one topic at a time:
 
 At the end of each day, send two lines: the boxes you ticked and your weakest topic.
 
+## How these notes are built, and how to revise
+
+Every lesson follows what learning research says works best:
+
+| Research finding | What you'll see in every lesson |
+|---|---|
+| Words plus a picture beat words alone (dual coding) | a **diagram right next to** each idea |
+| Concrete examples make rules stick | **one small example** with numbers you can work out in your head |
+| Asking "why?" deepens understanding | every rule comes with its **reason** |
+| **Testing yourself** and **spacing out revision** work best, while rereading and highlighting work poorly (Dunlosky et al., 2013) | a **🧪 Test yourself** section, and a **⚡ Quick Revision** at the end with "say it aloud" questions |
+| People remember the start and the end best | a **one-line summary** at the top and the **Quick Revision** at the bottom |
+
+**How to use a lesson:** read the `.md` (it starts with "In one line") → run the `.java` → close both and explain the topic aloud → answer 🧪 Test yourself without looking.
+
+**Revision schedule:**
+- **The night before:** read each lesson's ⚡ Quick Revision.
+- **2 hours before:** read [QUICK-REVISION.md](QUICK-REVISION.md) only. For each topic, cover the screen and answer the 🗣️ questions aloud.
+
+**Diagrams:** press `Ctrl+Shift+V` on any `.md` file. They show in VS Code with the *Markdown Preview Mermaid Support* extension (already installed) and on GitHub.
+
 ## Project structure
 
 ```text
@@ -30,8 +51,10 @@ Java With AI/
 ├── README.md                     you are here: topic list and progress
 ├── SPRINT-PLAN.md                your original plan (reference copy)
 ├── STUMBLE-LIST.md               everything you stumble on; reread it on interview day
-├── .vscode/settings.json         tells VS Code which folders hold runnable Java
-├── .claude/skills/teach-interview-topic/   the teaching style, saved so every topic is taught the same way
+├── QUICK-REVISION.md             every lesson's ⚡ Quick Revision on one page (generated)
+├── .vscode/settings.json         tells VS Code which folders hold runnable Java; spell-check words
+├── .vscode/extensions.json       recommends the Java pack and the Mermaid diagram preview
+├── .claude/skills/teach-interview-topic/   the teaching style (SKILL.md, the lesson template, and scripts that check diagrams and build QUICK-REVISION.md)
 │
 ├── 00-intro-and-hr/              Part 0  intro, why you left, salary, resume audit   .md
 ├── 01-java-core/                 Part 1  Java core lessons                           .md to read + .java to run

@@ -1,10 +1,12 @@
 # S00 · Streams toolkit: the collectors you need for the 8 programs
 
-**Read this first (12 min). Then run [S00_StreamsToolkit.java](S00_StreamsToolkit.java) to watch each step happen.**
+> **In one line:** Most stream interview questions sound like "**group** these, then **count / sum / find the biggest** in each group". The answer is one `collect(...)` call with the right **collector**: `groupingBy`, `counting`, `summingInt`, `maxBy`, `partitioningBy` or `toMap`.
 
-This is your **look-up sheet** for the practice file [S01_StreamPractice.java](S01_StreamPractice.java). Understand the 8 tools using the six payments below, then write the 8 programs yourself. Come back here only after 10 minutes stuck on a problem.
+| ⏱️ Read | 🧪 Run | 🎯 Asked |
+|---|---|---|
+| 12 min | `java 02-java8-streams/S00_StreamsToolkit.java` | The live-coding part of most Java rounds. Practice in [S01](S01_StreamPractice.java) |
 
-J08 covered filter, map, flatMap, sorted and Optional. This page adds the **collectors**: the tools that group, count, sum and pick things.
+This is your **look-up sheet** for the practice file. Learn the tools on these six payments, then write the 8 programs yourself in S01. Come back only after 10 minutes stuck.
 
 | txnId | amount | status | mode |
 |---|---|---|---|
@@ -17,21 +19,29 @@ J08 covered filter, map, flatMap, sorted and Optional. This page adds the **coll
 
 ---
 
-## The problem
+## 🧩 Words you need
 
-Most stream questions in interviews sound like "group these, then count / sum / find the biggest in each group". With plain loops, that means a map, null checks and a lot of code. With streams it's one `collect(...)` call, as long as you know which **collector** to use.
+| Word | In one line |
+|---|---|
+| **collector** | the "how to gather the results" part of `collect(...)` |
+| **groupingBy** | puts items into bins by a key, giving `Map<key, List>` |
+| **downstream collector** | the 2nd argument of groupingBy: what to do with each bin (count, sum, max …) |
+| **partitioningBy** | exactly two bins: `true` and `false` |
+| **merge function** | toMap's rule for "the same key twice" |
 
-## Real-life picture: the post office sorting room
+---
 
-Letters (payments) come along a belt, and the sorting room puts them where they belong:
+## 🖼️ Picture it: the post office sorting room
 
-- **groupingBy:** sort the letters into **bins by PIN code** (by status).
-- **counting:** count the letters in each bin.
-- **summingInt:** add up the postage in each bin.
-- **mapping:** from each letter, keep only the address label (just the txnId).
-- **maxBy:** find the heaviest parcel in each bin.
-- **partitioningBy:** exactly **two bins**, "Speed Post: yes" and "Speed Post: no".
-- **toMap:** a register with **one line per tracking number**, plus a rule for what to do when the same number turns up twice.
+```mermaid
+flowchart LR
+    B["belt: TXN1 ... TXN6"] --> G{"groupingBy(status)"}
+    G --> F["FAILED bin<br/>TXN2, TXN6<br/>count 2, sum 1100"]
+    G --> P["PENDING bin<br/>TXN3<br/>count 1, sum 300"]
+    G --> S["SUCCESS bin<br/>TXN1, TXN4, TXN5<br/>count 3, sum 17000"]
+```
+
+👀 **Notice:** `groupingBy` makes the bins. The **downstream collector** decides what you write on each bin's label: the list, the count, the sum or the biggest.
 
 | Sorting room | Collector |
 |---|---|
@@ -39,265 +49,240 @@ Letters (payments) come along a belt, and the sorting room puts them where they 
 | count per bin | `groupingBy(..., counting())` |
 | total postage per bin | `groupingBy(..., summingInt(Payment::amount))` |
 | keep only the label | `groupingBy(..., mapping(Payment::txnId, toList()))` |
-| heaviest in each bin | `groupingBy(..., maxBy(comparator))` |
-| two bins, yes and no | `partitioningBy(p -> p.amount() > 1000)` |
-| one line per tracking number | `toMap(Payment::txnId, Payment::amount)` |
-
-```text
-belt:             TXN1   TXN2   TXN3   TXN4   TXN5   TXN6
-                    \      |      |      |      |     /
-groupingBy(status): [FAILED]      [PENDING]     [SUCCESS]
-                    TXN2 TXN6       TXN3        TXN1 TXN4 TXN5
-counting():            2              1              3
-summingInt(amount):  1,100           300          17,000
-```
+| heaviest parcel per bin | `groupingBy(..., maxBy(comparator))` |
+| two bins, "Speed Post: yes / no" | `partitioningBy(p -> p.amount() > 1000)` |
+| one register line per tracking number | `toMap(Payment::txnId, Payment::amount)` |
 
 ---
 
-## Step by step
+## 🔬 How it works, step by step
 
-### Step 1 · Collect the results: `toList()` and `joining()`
+### Step 1 · `toList()` and `joining()`
 
 ```java
-PAYMENTS.stream().filter(p -> p.status().equals("SUCCESS")).map(Payment::txnId).toList()
+PAYMENTS.stream().filter(p -> p.status().equals("SUCCESS")).map(Payment::txnId).toList();
 // [TXN1, TXN4, TXN5]
-
-PAYMENTS.stream().map(Payment::txnId).collect(Collectors.joining(", "))
+PAYMENTS.stream().map(Payment::txnId).collect(Collectors.joining(", "));
 // "TXN1, TXN2, TXN3, TXN4, TXN5, TXN6"
 ```
 
-`.toList()` is from Java 16. On older Java, write `.collect(Collectors.toList())`.
+`.toList()` is Java 16+. On older Java, write `.collect(Collectors.toList())`.
 
-### Step 2 · `groupingBy`: sort into bins
-
-```java
-groupingBy(Payment::status)                                        // status -> its payments
-groupingBy(Payment::status, counting())                            // status -> how many
-groupingBy(Payment::status, summingInt(Payment::amount))           // status -> total amount
-groupingBy(Payment::mode, mapping(Payment::txnId, toList()))       // mode -> just the ids
-```
+### Step 2 · `groupingBy` plus a downstream collector
 
 | Call | Result |
 |---|---|
-| by status | {FAILED=[TXN2, TXN6], PENDING=[TXN3], SUCCESS=[TXN1, TXN4, TXN5]} |
-| count by status | {FAILED=**2**, PENDING=**1**, SUCCESS=**3**} |
-| sum by status | FAILED 450 + 650 = **1,100**, PENDING **300**, SUCCESS 1,200 + 15,000 + 800 = **17,000** |
-| ids by mode | {CARD=[TXN2, TXN5], NETBANKING=[TXN4], UPI=[TXN1, TXN3, TXN6]} |
+| `groupingBy(status)` | {FAILED=[TXN2, TXN6], PENDING=[TXN3], SUCCESS=[TXN1, TXN4, TXN5]} |
+| `groupingBy(status, counting())` | {FAILED=**2**, PENDING=**1**, SUCCESS=**3**} |
+| `groupingBy(status, summingInt(amount))` | FAILED 450 + 650 = **1,100** · PENDING **300** · SUCCESS 1,200 + 15,000 + 800 = **17,000** |
+| `groupingBy(mode, mapping(txnId, toList()))` | {CARD=[TXN2, TXN5], NETBANKING=[TXN4], UPI=[TXN1, TXN3, TXN6]} |
 
-The second argument is called the **downstream collector**. It says what to do with each bin. Without it, you get a List.
-
-`groupingBy` returns a **HashMap**, which has no order (J04). The demo copies it into a TreeMap only so the keys print from A to Z.
+⚠️ `counting()` gives a **Long**, so the map is `Map<String, Long>`. Writing Integer is a classic compile error in live coding.
 
 ### Step 3 · The biggest in each bin: `maxBy` and `collectingAndThen`
 
-```java
-groupingBy(Payment::status, maxBy(Comparator.comparingInt(Payment::amount)))
-// {FAILED=Optional[TXN6], PENDING=Optional[TXN3], SUCCESS=Optional[TXN4]}
+```mermaid
+flowchart LR
+    M["groupingBy(status,<br/>maxBy(amount))"] --> O["{FAILED=Optional[TXN6], ...}"]
+    O -->|"collectingAndThen(..., Optional::get)"| U["{FAILED=TXN6, PENDING=TXN3, SUCCESS=TXN4}"]
 ```
 
-`maxBy` gives an **Optional** (J08), because in general the stream could be empty. Inside groupingBy a bin always has at least one item, so it's safe to unwrap:
-
-```java
-groupingBy(Payment::status, collectingAndThen(maxBy(...), Optional::get))
-// {FAILED=TXN6, PENDING=TXN3, SUCCESS=TXN4}
-```
-
-`collectingAndThen(collector, finisher)` means: collect as usual, then apply one last step to the result. FAILED gives TXN6 because 650 > 450.
+`maxBy` returns an **Optional**, because in general a stream can be empty. Inside a groupingBy bin there's always at least one item, so unwrapping with `Optional::get` is safe. FAILED gives TXN6 because 650 > 450.
 
 ### Step 4 · `partitioningBy`: exactly two bins
 
 ```java
-partitioningBy(p -> p.amount() > 1_000)
-// {false=[TXN2, TXN3, TXN5, TXN6], true=[TXN1, TXN4]}
-
-partitioningBy(p -> p.amount() > 1_000, counting())
-// {false=4, true=2}
+partitioningBy(p -> p.amount() > 1_000)               // {false=[TXN2, TXN3, TXN5, TXN6], true=[TXN1, TXN4]}
+partitioningBy(p -> p.amount() > 1_000, counting())   // {false=4, true=2}
 ```
 
-**partitioningBy vs groupingBy:** partitioning always has both keys, `false` and `true`, even if one list is empty. groupingBy only has the keys that actually appear.
+🧠 partitioningBy **always** has both keys, even when one list is empty. groupingBy only has the keys that actually appear.
 
 ### Step 5 · `toMap`, and the duplicate-key trap
 
-```java
-toMap(Payment::txnId, Payment::amount)
-// {TXN1=1200, TXN2=450, TXN3=300, TXN4=15000, TXN5=800, TXN6=650}
+A gateway callback log where **TXN1 arrives twice**, which is common in payments:
+
+```mermaid
+flowchart LR
+    L["callback log:<br/>TXN1, TXN2, TXN1"] --> T{"toMap(id, amount)"}
+    T -->|"no merge rule"| X["IllegalStateException:<br/>Duplicate key TXN1"]
+    T -->|"merge: (first, second) -> first"| OK["{TXN1=1200, TXN2=450}"]
 ```
-
-Now a callback log where **TXN1 arrives twice**, which really happens with payment gateways:
-
-```text
-IllegalStateException: Duplicate key TXN1 (attempted merging values 1200 and 1200)
-```
-
-The fix is a third argument, the **merge rule**, which decides what to do with two values for the same key:
 
 ```java
 toMap(Payment::txnId, Payment::amount, (first, second) -> first)   // keep the first
-// {TXN1=1200, TXN2=450}
 ```
 
 ### Step 6 · Count, then filter the counts; choose the map type
 
-**Count, then filter:** first build the counts, then stream over the map's **entries**:
-
 ```java
-Map<String, Long> countByMode = ...groupingBy(Payment::mode, counting());    // {CARD=2, NETBANKING=1, UPI=3}
-countByMode.entrySet().stream()
-        .filter(entry -> entry.getValue() > 1)      // used more than once
+Map<String, Long> countByMode = ...groupingBy(Payment::mode, counting());   // {CARD=2, NETBANKING=1, UPI=3}
+countByMode.entrySet().stream()                   // a stream over the map's entries
+        .filter(entry -> entry.getValue() > 1)    // used more than once
         .map(Map.Entry::getKey)
-        .toList();                                  // [CARD, UPI]
+        .toList();                                // [CARD, UPI]
 ```
 
-**Choose the map:** the 3-argument `groupingBy` lets you pick the map type:
+**Choose the map** with the 3-argument groupingBy:
+- `groupingBy(Payment::mode, LinkedHashMap::new, counting())` gives `{UPI=3, CARD=2, NETBANKING=1}`, which is **first-seen order**.
+- `TreeMap::new` gives sorted keys.
 
-```java
-groupingBy(Payment::mode, LinkedHashMap::new, counting())
-// {UPI=3, CARD=2, NETBANKING=1}   <- first-seen order: UPI (TXN1), then CARD (TXN2), then NETBANKING (TXN4)
-```
-
-Use `LinkedHashMap::new` for first-seen order and `TreeMap::new` for sorted keys.
-
-**`Function.identity()`** means "the element itself", the same as `x -> x`:
-
-```java
-toMap(Payment::txnId, Function.identity())      // id -> the whole Payment
-```
+`Function.identity()` means "the element itself": `toMap(Payment::txnId, Function.identity())` maps each id to the whole Payment.
 
 ### Step 7 · Numbers
 
 ```java
-mapToInt(Payment::amount).sum()                  // 18,400
-mapToInt(Payment::amount).summaryStatistics()    // count=6, min=300, max=15000, average=3066.67
+mapToInt(Payment::amount).sum()                    // 18,400
+mapToInt(Payment::amount).summaryStatistics()      // count=6, min=300, max=15000, average=3066.67
 map(Payment::amount).sorted(Comparator.reverseOrder()).limit(3)   // [15000, 1200, 800]
-IntStream.rangeClosed(1, 5).boxed().toList()     // [1, 2, 3, 4, 5]
+IntStream.rangeClosed(1, 5).boxed().toList()       // [1, 2, 3, 4, 5]
 ```
 
-- `mapToInt` gives an `IntStream`, which has `sum()`, `average()`, `max()` and `summaryStatistics()`, with no boxing.
-- `boxed()` turns an `int` back into an `Integer`, so you can collect it into a List.
-- `sorted(Comparator.reverseOrder())` sorts from biggest to smallest.
-- `skip(n)` jumps over the first n items, and `limit(n)` keeps only the first n.
+- `mapToInt` avoids boxing and gives `sum()` and `average()`.
+- `boxed()` turns an `int` back into an `Integer`.
+- `skip(n)` jumps over n items, and `limit(n)` keeps n.
 
 ### Step 8 · A String as a stream of characters
 
 ```java
-"BBPS".chars()                          // [66, 66, 80, 83]  <- int codes, not letters!
+"BBPS".chars()                          // [66, 66, 80, 83]  <- int CODES, not letters!
 "BBPS".chars().mapToObj(c -> (char) c)  // [B, B, P, S]
 "BBPS".chars().distinct().count()       // 3
 ```
 
-`chars()` gives an `IntStream` of character codes, so turn them back with `mapToObj(c -> (char) c)`. After that, all the collectors above work on characters.
+---
+
+## 🗺️ Hint sheet: which tools for which S01 problem (use it only after 10 minutes)
+
+```mermaid
+flowchart LR
+    P1["1 char frequency"] --> T1["Step 8 + Step 2 + LinkedHashMap::new"]
+    P2["2 first non-repeated"] --> T2["the counts from 1, then entries with count 1"]
+    P3["3 duplicates"] --> T3["Step 6: count, keep > 1"]
+    P4["4 second highest"] --> T4["distinct + sorted desc + skip(1)"]
+    P5["5 group by dept"] --> T5["Step 2 groupingBy"]
+    P6["6 highest paid per dept"] --> T6["Step 3 maxBy + collectingAndThen"]
+    P7["7 sort salary desc, name"] --> T7["J08 Comparator chain"]
+    P8["8 even and odd"] --> T8["rangeClosed + partitioningBy"]
+```
 
 ---
 
-## Hint sheet: which tools for which practice problem
+## ⚠️ Traps interviewers love
 
-Use this **only after 10 minutes** on a problem in [S01_StreamPractice.java](S01_StreamPractice.java):
-
-| S01 problem | Tools |
-|---|---|
-| 1. Character frequency | Step 8 (chars → mapToObj) + Step 2 (groupingBy + counting) + Step 6 (LinkedHashMap::new keeps first-seen order) |
-| 2. First non-repeated character | the same counts as problem 1, then Step 6 (stream the entries, take the first with count 1) |
-| 3. Duplicate elements | Step 6 (count, then keep counts > 1) |
-| 4. Second-highest number | Step 7 (sort biggest first) + `distinct()` + `skip(1)` + `findFirst()` |
-| 5. Employees grouped by department | Step 2 (groupingBy) |
-| 6. Highest-paid employee per department | Step 3 (maxBy + collectingAndThen) |
-| 7. Sort by salary descending, then by name | J08 Step 2 (Comparator chain) |
-| 8. Numbers partitioned into even and odd | Step 7 (rangeClosed) + Step 4 (partitioningBy) |
+| Trap | Why it's wrong | Do this instead |
+|---|---|---|
+| `Map<String, Integer>` with `counting()` | counting returns Long | `Map<String, Long>` |
+| toMap with possible duplicate keys | IllegalStateException | add a merge function |
+| Expecting order from groupingBy | it builds a HashMap | pass `LinkedHashMap::new` or `TreeMap::new` |
+| Leaving maxBy's Optional in the result | an ugly `Optional[...]` value | `collectingAndThen(maxBy(...), Optional::get)` |
+| Printing `"BBPS".chars()` expecting letters | you get int codes | `mapToObj(c -> (char) c)` |
 
 ---
 
-## How to explain it in the interview (live coding)
+## 🎯 In the interview (live coding)
 
-The plan says to **talk before you type**. For any stream question, say these out loud:
+**What they're really testing**
+- *Service companies:* can you write groupingBy and counting without looking it up.
+- *Product companies:* the right collector for the job, the types (`Long`), duplicates in toMap, ordering, and the cost: one pass is O(n), a sort is O(n log n).
 
+**Talk before you type, in this order:**
 1. **The shape of the answer:** "I need a map from department to the highest-paid employee."
-2. **The collector:** "So I'll use groupingBy on department, with maxBy on salary as the downstream collector."
-3. **The details:** "maxBy gives an Optional, so I unwrap it with collectingAndThen." Or: "toMap throws on duplicate keys, so I pass a merge function." Or: "LinkedHashMap keeps first-seen order."
-4. **The cost:** one pass over the list, so O(n). If you sort, it's O(n log n).
+2. **The collector:** "So groupingBy on department, with maxBy on salary downstream."
+3. **The detail:** "maxBy gives an Optional, so I unwrap it with collectingAndThen." Or: "toMap needs a merge function for duplicates." Or: "LinkedHashMap for first-seen order."
+4. **The cost:** "One pass, O(n)."
 
-**Here's how it can sound** (simple words):
+**Sample answer** (simple words):
 
-> "I'll stream the payments and collect with groupingBy on status, which gives me a map from status to its list of payments. If I only need counts, I pass counting() as the downstream collector, and for totals, summingInt on amount. For the biggest payment per status I use maxBy with a comparator on amount, which returns an Optional, so I wrap it in collectingAndThen with Optional::get. If I need just two groups, like above or below 1,000, partitioningBy is cleaner. And if I build a map with toMap, I remember it throws on duplicate keys, so I give it a merge function."
+> "I stream the payments and collect with groupingBy on status, which gives a map from status to its payments. For counts I pass counting() as the downstream collector, and for totals, summingInt on amount. For the biggest payment per status I use maxBy with a comparator, which returns an Optional, so I wrap it in collectingAndThen with Optional::get. For just two groups, like above or below 1,000, partitioningBy is cleaner. And when I build a map with toMap I remember it throws on duplicate keys, so I give it a merge function."
 
 ---
 
-## Follow-up questions (simple answers)
-
-**Why does `counting()` give a `Long` and not an `Integer`?**
-That's just how it's defined: it returns a `long` count. So the map is `Map<String, Long>`. Writing `Map<String, Integer>` is a common compile error in live coding.
+## ❓ Follow-up questions
 
 **groupingBy vs partitioningBy?**
-partitioningBy takes a true/false test and always has both keys. groupingBy takes any key and only has the keys that appear.
-
-**What happens with toMap on duplicate keys, or null values?**
-Duplicate keys throw an IllegalStateException unless you give a merge function. A null value throws a NullPointerException.
+partitioningBy takes a true/false test and always has both keys. groupingBy takes any key and has only the keys that appear.
 
 **`toList()` vs `collect(Collectors.toList())`?**
-`toList()` (Java 16) gives an **unmodifiable** list. `Collectors.toList()` gives a normal, changeable list (an ArrayList in practice).
+`toList()` (Java 16) is **unmodifiable**. `Collectors.toList()` gives a normal, changeable list.
 
-**Why `mapToInt` instead of `map`?**
-It avoids wrapping every number in an Integer, and it gives `sum()`, `average()` and `summaryStatistics()`.
+**toMap with null values?**
+It throws NullPointerException.
 
-**How do you keep the order of groups?**
-Use `groupingBy(key, LinkedHashMap::new, downstream)` for first-seen order, or `TreeMap::new` for sorted order.
-
-*Only if they push further:* `toMap(key, value, merge, TreeMap::new)` also lets you choose the map type. And `teeing(c1, c2, merger)` (Java 12) runs two collectors in one pass and combines their results, for example the min and the max together.
+*Only if they push further:* `teeing(c1, c2, merger)` (Java 12) runs two collectors in one pass and combines them, for example the min and the max together.
 
 ---
 
-## Numbers to remember
+## 🧪 Test yourself (answer aloud, then click)
 
-| What | Result |
-|---|---|
-| Count by status | FAILED 2, PENDING 1, SUCCESS 3 |
-| Sum by status | FAILED 1,100, PENDING 300, SUCCESS 17,000 |
-| Biggest per status | FAILED TXN6, PENDING TXN3, SUCCESS TXN4 |
-| Amount > 1,000 | true: TXN1, TXN4 · false: the other 4 |
-| Sum of all amounts | 18,400 |
-| Top 3 amounts | 15,000, 1,200, 800 |
-
-## Self-check (answer aloud, then click to check)
-
-<details><summary>1. groupingBy(status, counting()) on the six payments: what's the result?</summary>
+<details><summary>1. What does groupingBy(status, counting()) give on the six payments?</summary>
 
 {FAILED=2, PENDING=1, SUCCESS=3}
 
 </details>
 
-<details><summary>2. What's the total amount of the FAILED payments, and which collector gives it?</summary>
+<details><summary>2. What's the total of the FAILED payments, and which collector gives it?</summary>
 
 450 + 650 = 1,100, from groupingBy(status, summingInt(Payment::amount)).
 
 </details>
 
-<details><summary>3. Why does groupingBy(status, maxBy(...)) give Optional values, and how do you remove them?</summary>
+<details><summary>3. Why does maxBy give Optional values, and how do you remove them?</summary>
 
-maxBy returns an Optional because a stream could be empty. Wrap it: collectingAndThen(maxBy(...), Optional::get).
-
-</details>
-
-<details><summary>4. What does toMap(txnId, amount) do when TXN1 appears twice?</summary>
-
-It throws IllegalStateException: Duplicate key TXN1. Add a merge function such as (first, second) -> first.
+A stream could be empty in general. Wrap it: collectingAndThen(maxBy(...), Optional::get).
 
 </details>
 
-<details><summary>5. What's the difference between partitioningBy(p -> p.amount() > 100_000) and groupingBy with the same test?</summary>
+<details><summary>4. What does toMap(txnId, amount) do with TXN1 twice?</summary>
 
-partitioningBy gives {false=[all six], true=[]}, with both keys always there. groupingBy gives only {false=[all six]}.
-
-</details>
-
-<details><summary>6. What does "BBPS".chars() give, and how do you get letters?</summary>
-
-It gives int codes [66, 66, 80, 83]. Use mapToObj(c -> (char) c) to get [B, B, P, S].
+It throws IllegalStateException: Duplicate key TXN1. Add (first, second) -> first.
 
 </details>
 
-<details><summary>7. How do you keep groups in first-seen order?</summary>
+<details><summary>5. What do "BBPS".chars() and then mapToObj(c -> (char) c) give?</summary>
 
-Use groupingBy(key, LinkedHashMap::new, downstream).
+[66, 66, 80, 83], then [B, B, P, S].
 
 </details>
 
-If you get stuck on any of them, add it to [STUMBLE-LIST.md](../STUMBLE-LIST.md). When all 7 feel easy, tick S00 in the [README](../README.md) and open S01 to start the practice.
+When they all feel easy, tick S00 in the [README](../README.md) and open [S01_StreamPractice.java](S01_StreamPractice.java).
+
+---
+
+## ⚡ Quick Revision (2 hours before the interview)
+
+```mermaid
+flowchart LR
+    S["stream()"] --> C{"collect(...)"}
+    C --> G["groupingBy(key, downstream)"]
+    G --> D1["counting() gives Long"]
+    G --> D2["summingInt(x)"]
+    G --> D3["mapping(x, toList())"]
+    G --> D4["collectingAndThen(maxBy(cmp), Optional::get)"]
+    C --> PB["partitioningBy(test): true/false"]
+    C --> TM["toMap(k, v, merge)"]
+```
+
+**🧠 Must remember**
+1. `groupingBy(key)` gives `Map<key, List>`. The 2nd argument, the **downstream**, says what to do per bin.
+2. `counting()` gives a **Long**. `summingInt(f)` gives the sum. `mapping(f, toList())` keeps only f.
+3. **Max per group:** `collectingAndThen(maxBy(comparingInt(f)), Optional::get)`.
+4. `partitioningBy(test)` always gives **both** false and true.
+5. `toMap(k, v)` **throws on duplicate keys**. Add `(a, b) -> a`.
+6. **Order:** `groupingBy(key, LinkedHashMap::new, downstream)` for first-seen order, `TreeMap::new` for sorted.
+7. **Count, then filter:** `.entrySet().stream().filter(e -> e.getValue() > 1).map(Map.Entry::getKey)`.
+8. `str.chars()` gives **int codes**, so use `mapToObj(c -> (char) c)`. `mapToInt(...).sum()`. `IntStream.rangeClosed(1, n).boxed()`.
+
+**⚠️ Top traps**
+- Writing `Map<String, Integer>` with counting().
+- A toMap with duplicates and no merge rule.
+- Expecting order from a plain groupingBy.
+
+**🎯 30-second answer:** "For 'group and aggregate' questions I use collect with groupingBy and a downstream collector: counting for counts, summingInt for totals, maxBy wrapped in collectingAndThen for the biggest per group. partitioningBy for exactly two groups, and toMap with a merge function when keys can repeat. LinkedHashMap::new if the order matters."
+
+**🔑 Memory hook:** *"The post office: groupingBy makes the bins, and the downstream writes the label: count, sum or heaviest. Partitioning is just Yes and No. toMap is the register: decide what to do if a number repeats."*
+
+**🗣️ Say it aloud (no peeking):**
+1. Write the "highest paid per department" collector from memory.
+2. What goes wrong with toMap on a callback log, and how do you fix it?
+3. How do you get a character-frequency map in first-seen order?

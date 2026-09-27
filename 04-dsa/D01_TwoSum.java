@@ -207,3 +207,21 @@ public class D01_TwoSum {
  *           2) so a number never pairs with itself: [3, 2, 4] with target 6 would give [0, 0]
  *           3) about 5 crore (10,000 x 9,999 / 2)   4) O(n) time, O(n) space
  */
+
+/*
+ * QUICK REVISION START
+ * D01 Two Sum: return the indices of the two numbers that add up to the target.
+ *   Idea    : for each number x, look for its partner (target - x) in a HashMap of the numbers seen so far.
+ *   Picture : [200, 450, 700, 250], target 900
+ *               200 -> need 700 -> not seen -> remember 200 at 0
+ *               450 -> need 450 -> not seen -> remember 450 at 1
+ *               700 -> need 200 -> SEEN at 0 -> answer [0, 2]
+ *   Cost    : brute force (every pair) O(n^2) time, O(1) space | HashMap O(n) time, O(n) space
+ *   Trap    : check the map BEFORE adding x, or [3, 2, 4] with target 6 answers [0, 0]
+ *   Sorted input? two pointers from both ends: O(n) time, O(1) space
+ *   30-second answer: "Brute force checks every pair, O(n squared). In one pass with a HashMap, for each
+ *     number I look up target minus it among the numbers already seen. If it's there I return both
+ *     indices, otherwise I store the number with its index. O(n) time, O(n) space."
+ *   Memory hook: a register at the door; each bill asks "is my partner already inside?"
+ * QUICK REVISION END
+ */

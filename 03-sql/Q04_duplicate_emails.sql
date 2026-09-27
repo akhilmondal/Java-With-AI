@@ -73,7 +73,7 @@ ORDER BY email;
 
 
 -- THE COMMON MISTAKE: filtering the count in WHERE.
--- SELECT email FROM customers WHERE COUNT(*) > 1 GROUP BY email;
+-- SELECT email FROM customers WHERE COUNT(*) > 1 GROUP BY email
 -- ERROR: aggregate functions are not allowed in WHERE
 -- WHERE runs BEFORE the piles exist (Q00 Step 1), so the count must go in HAVING.
 
@@ -123,21 +123,21 @@ ORDER BY id;
 -- Keep the smallest id of each email, and delete every other row:
 --
 -- DELETE FROM customers
--- WHERE id NOT IN (SELECT MIN(id) FROM customers GROUP BY email);
+-- WHERE id NOT IN (SELECT MIN(id) FROM customers GROUP BY email)
 --
 -- It deletes ids 3, 5 and 6. Left: 1 ravi, 2 anu, 4 kiran.
 --
 -- PostgreSQL also has a join-style delete that does the same thing:
 -- DELETE FROM customers a USING customers b
--- WHERE a.email = b.email AND a.id > b.id;
+-- WHERE a.email = b.email AND a.id > b.id
 --
--- To stop duplicates for good: ALTER TABLE customers ADD CONSTRAINT uq_customers_email UNIQUE (email);
+-- To stop duplicates for good: ALTER TABLE customers ADD CONSTRAINT uq_customers_email UNIQUE (email)
 -- (It only works after the duplicates are gone.)
 
 
 /* ============================================================================
-   HOW TO EXPLAIN IT IN THE INTERVIEW (your own words; cover these points)
-     1. GROUP BY email makes one group per email; COUNT(*) counts each group.
+   HOW TO EXPLAIN IT IN THE INTERVIEW (your own words, cover these points)
+     1. GROUP BY email makes one group per email, COUNT(*) counts each group.
      2. HAVING COUNT(*) > 1 keeps only the duplicates. It must be HAVING, not
         WHERE, because WHERE runs before grouping.
      3. To see the rows: WHERE email IN (that query). To find the extra copies:
@@ -167,5 +167,18 @@ ORDER BY id;
      4. What stops new duplicates in future?
    ============================================================================ */
 
--- Answers: 1) 2 (anu 2, ravi 3)   2) WHERE runs before GROUP BY; aggregates go in HAVING
+-- Answers: 1) 2 (anu 2, ravi 3)   2) WHERE runs before GROUP BY, aggregates go in HAVING
 --          3) 3, 5, 6              4) a UNIQUE constraint (or unique index) on email
+
+-- QUICK REVISION START
+-- Q04 Duplicate emails
+--   Find    : SELECT email, COUNT(*) FROM customers GROUP BY email HAVING COUNT(*) > 1
+--             -> anu@mail.com 2, ravi@mail.com 3
+--   Extras  : ROW_NUMBER() OVER (PARTITION BY email ORDER BY id) > 1 -> ids 3, 5, 6 are the extra copies
+--   Delete  : DELETE FROM customers WHERE id NOT IN (SELECT MIN(id) FROM customers GROUP BY email)
+--             leaves 1 ravi, 2 anu, 4 kiran
+--   Prevent : a UNIQUE constraint on email (for payments: UNIQUE on txn_id = idempotency guard)
+--   Trap    : WHERE COUNT(*) > 1 -> error, WHERE runs before GROUP BY, so use HAVING
+--   30-second answer: "GROUP BY email, HAVING COUNT(*) > 1. HAVING, not WHERE, because WHERE runs
+--             before grouping. To clean up, keep MIN(id) per email, delete the rest, add a unique constraint."
+-- QUICK REVISION END

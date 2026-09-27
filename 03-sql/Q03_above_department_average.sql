@@ -125,7 +125,7 @@ ORDER BY salary DESC, name;
 
 
 /* ============================================================================
-   HOW TO EXPLAIN IT IN THE INTERVIEW (your own words; cover these points)
+   HOW TO EXPLAIN IT IN THE INTERVIEW (your own words, cover these points)
      1. I need each department's average, then compare every employee with
         the average of their own department.
      2. The simplest version is a correlated subquery: WHERE salary >
@@ -151,7 +151,7 @@ ORDER BY salary DESC, name;
      A: A correlated subquery can run once per outer row. The CTE computes each
         average once. PostgreSQL often rewrites both well, and EXPLAIN tells you (Q07).
      Q: Why ROUND?
-     A: AVG of integers returns a decimal like 72500.000000; ROUND(x, 2) just
+     A: AVG of integers returns a decimal like 72500.000000, ROUND(x, 2) just
         makes it readable.
 
    SELF-CHECK (answers at the very bottom)
@@ -161,6 +161,19 @@ ORDER BY salary DESC, name;
      4. Who earns more than the company average of 66875?
    ============================================================================ */
 
--- Answers: 1) 72500; only Neha (75000)   2) 60000 is not greater than 60000
+-- Answers: 1) 72500, only Neha (75000)   2) 60000 is not greater than 60000
 --          3) AVG(salary) OVER (PARTITION BY department_id)
 --          4) Meera, Priya, Sneha, Vikram, Neha (Karan 60000, Rahul, Amit are below)
+
+-- QUICK REVISION START
+-- Q03 Employees earning above their department's average
+--   Averages : PAYMENTS 210000/3 = 70000 | BILLING 180000/3 = 60000 | UI 145000/2 = 72500
+--   Result   : Meera 90000, Priya 80000 (PAYMENTS), Sneha 90000 (BILLING), Neha 75000 (UI)
+--   Way 1    : WHERE e.salary > (SELECT AVG(salary) FROM employees e2 WHERE e2.department_id = e.department_id)
+--   Way 2    : WITH dept_avg AS (SELECT department_id, AVG(salary) avg_salary ... GROUP BY department_id)
+--              then JOIN on department_id WHERE salary > avg_salary
+--   Way 3    : AVG(salary) OVER (PARTITION BY department_id) in a subquery, filter outside
+--   Trap     : Karan = 60000 equals BILLING's average -> ">" leaves him out
+--   30-second answer: "Compute each department's average in a CTE, join it back on department_id and
+--              keep salary > average. A correlated subquery also works but can run once per row."
+-- QUICK REVISION END

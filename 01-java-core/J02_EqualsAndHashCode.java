@@ -5,17 +5,25 @@ import java.util.Objects;
 import java.util.Set;
 
 /*
- * J02  equals() and hashCode(): runnable demo
+ * J02  equals() and hashCode(): a runnable demo
  *
- * Read J02_EqualsAndHashCode.md first. This file runs the same steps so you
- * can see them happen. The step numbers match the .md file.
+ * WHAT YOU WILL SEE (the numbers match J02_EqualsAndHashCode.md)
+ *   Step 1  override nothing: two copies of employee 101 count as 2 employees
+ *   Step 2  override only equals(): still 2, because the map never calls equals()
+ *   Step 3  override only hashCode(): same bucket (132 % 16 = 4), but still 2
+ *   Step 4  override both: 1 employee, and get(copy) finds the value
+ *   Step 5  the rules: the same hashCode doesn't mean equal ("Aa" and "BB"),
+ *           and equals/hashCode must use the same fields
+ *   Step 6  a record writes both methods for you, from ALL its fields
  *
- * Run it:  java 01-java-core/J02_EqualsAndHashCode.java
- *          (or click "Run" above main() in VS Code)
+ * HOW TO RUN   java 01-java-core/J02_EqualsAndHashCode.java   (or click "Run" above main)
+ * READ FIRST   J02_EqualsAndHashCode.md
  */
 public class J02_EqualsAndHashCode {
 
     public static void main(String[] args) {
+        // Step 1: two objects with the same data. Java doesn't know that
+        // "same ID = same employee", so by default they are different.
         step("Step 1: override nothing");
         PlainEmployee p1 = new PlainEmployee(101, "Rahul");
         PlainEmployee p2 = new PlainEmployee(101, "Rahul");    // same data, a different object
@@ -24,33 +32,43 @@ public class J02_EqualsAndHashCode {
                 + "  (made up by the JVM, nothing to do with id 101)");
         check(p1, p2);
 
+        // Step 2: equals() now says "same ID = same employee", but hashCode() is
+        // still the random one, so the copies go to different buckets.
         step("Step 2: override only equals()");
         check(new EqualsOnlyEmployee(101, "Rahul"), new EqualsOnlyEmployee(101, "Rahul"));
+        System.out.println("Notice: equals() is true, but the map compares hashCodes first and never asks equals().");
 
+        // Step 3: hashCode() now uses the ID, so both copies land in the same bucket,
+        // but equals() is still the default "same object?" check.
         step("Step 3: override only hashCode()");
         HashCodeOnlyEmployee h1 = new HashCodeOnlyEmployee(101, "Rahul");
         System.out.println("hashCode = Objects.hash(101) = " + h1.hashCode()
                 + ", bucket = " + h1.hashCode() + " % 16 = " + (h1.hashCode() % 16));
         check(h1, new HashCodeOnlyEmployee(101, "Rahul"));
+        System.out.println("Notice: right bucket, but equals() is still ==, so the copy isn't recognised.");
 
+        // Step 4: both overridden, on the same field. Same bucket AND equals() says yes.
         step("Step 4: override both (correct)");
         check(new Employee(101, "Rahul"), new Employee(101, "Rahul"));
+        System.out.println("Notice: same bucket and equals() true -> one employee, and get() works.");
 
+        // Step 5: the rules. First: the same hashCode does NOT mean equal (a collision).
         step("Step 5: the rules");
-        // Rule 2: the same hashCode does NOT mean equal. That's just a collision.
         System.out.println("\"Aa\".hashCode() = " + "Aa".hashCode() + ", \"BB\".hashCode() = " + "BB".hashCode());
         System.out.println("\"Aa\".equals(\"BB\") = " + "Aa".equals("BB") + "  (a collision, and that's allowed)");
 
-        // Rule 3: equals() and hashCode() must use the same fields.
+        // Second: equals() and hashCode() must use the same fields.
         System.out.println();
         System.out.println("Rule 3 broken: equals() uses id, hashCode() uses id + name:");
         check(new MismatchedEmployee(101, "Rahul"), new MismatchedEmployee(101, "Rahul Sharma"));
+        System.out.println("Notice: equal objects got different hashCodes, so the set kept both.");
 
+        // Step 6: a record (Java 16+) generates equals() and hashCode() from ALL its fields.
         step("Step 6: a record writes equals() and hashCode() for you");
         check(new EmployeeRecord(101, "Rahul"), new EmployeeRecord(101, "Rahul"));
-        // A record compares ALL of its fields, so a different name means a different employee.
         System.out.println("record (101, Rahul) equals (101, Rahul Sharma)? "
                 + new EmployeeRecord(101, "Rahul").equals(new EmployeeRecord(101, "Rahul Sharma")));
+        System.out.println("Notice: a record compares ALL fields, so a different name = a different employee.");
     }
 
     /**

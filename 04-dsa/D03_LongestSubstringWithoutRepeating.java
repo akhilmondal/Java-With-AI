@@ -230,3 +230,22 @@ public class D03_LongestSubstringWithoutRepeating {
  *           3) left moves back to 1, and it wrongly counts "bba" as 3
  *           4) O(n) time, O(k) space (k = number of different characters)
  */
+
+/*
+ * QUICK REVISION START
+ * D03 Longest Substring Without Repeating Characters: the longest run with no repeated character.
+ *   Idea    : a sliding window [left, right] that always holds unique characters, plus a map of each
+ *             character's LAST position. On a repeat inside the window: left = max(left, last + 1).
+ *   Picture : p w w k e w
+ *             [p w]           the second w repeats -> left jumps to 2
+ *                 [w k e]     length 3 -> best 3
+ *                   [k e w]   length 3 (the last w pushed left to 3)
+ *   Cost    : brute force O(n^2) | sliding window O(n) time, O(k) space (k = different characters)
+ *   Trap    : forget Math.max -> "abba" gives 3 ("bba") instead of 2
+ *   Tests   : "abcabcbb" 3 | "bbbbb" 1 | "" 0 | " " 1 | "dvdf" 3 | "abba" 2
+ *   30-second answer: "I slide a window with two pointers and keep each character's last index in a map.
+ *     When the right character was already seen inside the window, I move left to just after that index,
+ *     using max so it never goes back. Best = max(best, right - left + 1). O(n) time."
+ *   Memory hook: a bank queue with a no-same-name rule; people leave from the front until the old namesake is gone.
+ * QUICK REVISION END
+ */

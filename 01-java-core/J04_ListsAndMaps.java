@@ -7,17 +7,24 @@ import java.util.Map;
 import java.util.TreeMap;
 
 /*
- * J04  ArrayList vs LinkedList, HashMap vs LinkedHashMap vs TreeMap: runnable demo
+ * J04  ArrayList vs LinkedList, HashMap vs LinkedHashMap vs TreeMap: a runnable demo
  *
- * Read J04_ListsAndMaps.md first. This file runs the same steps so you can
- * see them happen. The step numbers match the .md file.
+ * WHAT YOU WILL SEE (the numbers match J04_ListsAndMaps.md)
+ *   Step 1  ArrayList: get(3) jumps straight there; add(0) shifts 5 items; capacity 10 -> 15 -> 22 -> 33 -> 49
+ *   Step 2  LinkedList: addFirst/addLast just link; get(3) walks T0 -> T1 -> T2 -> T3
+ *   Step 3  timings: get(i) is ArrayList's win, add(0) is LinkedList's win
+ *   Step 5  the same keys 250, 42, 305, 101 print in three different orders
+ *   Step 6  TreeMap answers "nearest key" questions: floorKey(200) = 101, fee slabs
+ *   Step 7  LinkedHashMap as an LRU cache: WATER gets evicted
  *
- * Run it:  java 01-java-core/J04_ListsAndMaps.java
- *          (or click "Run" above main() in VS Code)
+ * HOW TO RUN   java 01-java-core/J04_ListsAndMaps.java   (or click "Run" above main)
+ * READ FIRST   J04_ListsAndMaps.md
  */
 public class J04_ListsAndMaps {
 
     public static void main(String[] args) {
+        // Step 1: an ArrayList is an array inside. Index access is a jump;
+        // inserting at the front means shifting everyone one place right.
         step("Step 1: ArrayList, an array inside");
         List<String> seats = new ArrayList<>(List.of("T1", "T2", "T3", "T4", "T5"));
         System.out.println("list          : " + seats);
@@ -34,14 +41,19 @@ public class J04_ListsAndMaps {
             growth.append(" -> ").append(capacity);
         }
         System.out.println("capacity grows: " + growth);        // 10 -> 15 -> 22 -> 33 -> 49
+        System.out.println("Notice: reading by index is instant; inserting at the front moves everyone.");
 
+        // Step 2: a LinkedList is a chain of nodes. Adding at either end just
+        // links a node; reaching index 3 means walking node by node.
         step("Step 2: LinkedList, coaches with links");
         LinkedList<String> train = new LinkedList<>(List.of("T1", "T2", "T3", "T4", "T5"));
         train.addFirst("T0");                                  // just attach at the front, nothing shifts
         train.addLast("T6");                                   // just attach at the back
         System.out.println("list          : " + train);
         System.out.println("get(3)        : " + train.get(3) + "   (walks T0 -> T1 -> T2 -> T3)");
+        System.out.println("Notice: adding at the ends is instant; reaching the middle means walking.");
 
+        // Step 3: measure both. Each list wins one test.
         step("Step 3: measure it (your times will differ, the winner won't)");
         System.out.println("get(i) for every i, 20,000 items:");
         System.out.println("  ArrayList : " + timeGetByIndex(new ArrayList<>(), 20_000) + " ms");
@@ -50,6 +62,8 @@ public class J04_ListsAndMaps {
         System.out.println("  ArrayList : " + timeAddAtFront(new ArrayList<>(), 30_000) + " ms");
         System.out.println("  LinkedList: " + timeAddAtFront(new LinkedList<>(), 30_000) + " ms");
 
+        // Step 5: the same four keys go into three maps. The ORDER they come back in
+        // is the whole difference between the three.
         step("Step 5: same keys, three maps, three orders");
         int[] ids = {250, 42, 305, 101};                       // put in this order
         Map<Integer, String> hash = new HashMap<>();
@@ -64,6 +78,7 @@ public class J04_ListsAndMaps {
         System.out.println("LinkedHashMap : " + linked.keySet() + "   (the order they were put in)");
         System.out.println("TreeMap       : " + tree.keySet() + "   (sorted)");
 
+        // Step 6: TreeMap is sorted, so it can answer "nearest key" questions.
         step("Step 6: TreeMap's range methods");
         TreeMap<Integer, String> employees = new TreeMap<>(tree);
         System.out.println("firstKey()       : " + employees.firstKey());          // 42
@@ -82,7 +97,9 @@ public class J04_ListsAndMaps {
             int fee = feeSlabs.floorEntry(amount).getValue();  // the slab that starts at or below the amount
             System.out.println("fee for Rs " + amount + " = Rs " + fee);
         }
+        System.out.println("Notice: one floorEntry() call replaces a whole if-else chain.");
 
+        // Step 7: LinkedHashMap in ACCESS order + a size limit = an LRU cache.
         step("Step 7: LinkedHashMap as an LRU cache (holds 3 billers)");
         Map<String, String> cache = new LruCache<>(3);
         cache.put("ELEC", "Electricity board");
@@ -93,6 +110,7 @@ public class J04_ListsAndMaps {
         System.out.println("after get(ELEC) : " + cache.keySet());   // [WATER, GAS, ELEC]
         cache.put("MOBILE", "Mobile recharge");                       // 4 > 3, so the least recently used goes
         System.out.println("after put MOBILE: " + cache.keySet() + "   (WATER evicted)");
+        System.out.println("Notice: the front of the list is always the least recently used entry.");
     }
 
     /**

@@ -244,3 +244,26 @@ public class S02_StreamSolutions {
         return result.toString();
     }
 }
+
+/*
+ * QUICK REVISION START
+ * S02 The 8 stream programs: one line each. Say the idea first, then write it.
+ *   1 char frequency     : s.chars().mapToObj(c -> (char) c)
+ *                            .collect(groupingBy(identity(), LinkedHashMap::new, counting()))   -> {S=3, U=1, C=2, E=1}
+ *   2 first non-repeated : frequencyMap.entrySet().stream().filter(e -> e.getValue() == 1)
+ *                            .map(Map.Entry::getKey).findFirst()                                -> U
+ *   3 duplicates         : groupingBy(identity(), counting()) -> entries with count > 1 -> keys  -> [T1, T2]
+ *                          (or: filter(id -> !seen.add(id)) with a HashSet)
+ *   4 second highest     : distinct().sorted(reverseOrder()).skip(1).findFirst()                -> 1200
+ *   5 group by dept      : groupingBy(Employee::department)
+ *   6 highest per dept   : groupingBy(dept, collectingAndThen(maxBy(comparingInt(salary)), Optional::get))
+ *   7 salary desc, name  : sorted(comparingInt(salary).reversed().thenComparing(name))          -> Priya, Sneha, Vikram, Amit, Rahul
+ *   8 even and odd       : partitioningBy(n -> n % 2 == 0)                                      -> {false=[1,3,5,7,9], true=[2,4,6,8,10]}
+ * Traps: counting() gives Long | problem 4 needs distinct() (without it: 15000) |
+ *        LinkedHashMap::new for first-seen order | toMap needs a merge function for duplicate keys
+ * 30-second approach: say the result's shape ("a map from department to employee"), name the collector,
+ *        mention the detail (Optional / duplicates / order), then the cost: one pass O(n), a sort O(n log n).
+ * Memory hook: groupingBy makes the bins, the downstream writes the label; partitioningBy = yes/no bins;
+ *        sorting = a comparator chain.
+ * QUICK REVISION END
+ */

@@ -8,13 +8,18 @@ import java.util.function.Supplier;
 
 /*
  * J11  Modern Java (8 to 21): lambdas, var, text blocks, switch expressions,
- *      records, sealed types, pattern matching, virtual threads: runnable demo
+ *      records, sealed types, pattern matching, virtual threads: a runnable demo
  *
- * Read J11_ModernJavaFeatures.md first. This file runs the same steps so you
- * can see them happen. The step numbers match the .md file.
+ * WHAT YOU WILL SEE (the numbers match J11_ModernJavaFeatures.md)
+ *   Step 1  lambdas: Predicate finds the one large payment (TXN4, 15000); FeeRule 2% on 1000 = 20
+ *   Step 2  var, a text block (JSON), and Java 11 String helpers
+ *   Step 3  a switch expression maps each status to an action
+ *   Step 4  a sealed interface + pattern matching switch with no default branch
+ *   Step 5  1,000 waiting tasks: ~2,000 ms on 50 platform threads vs ~110 ms on virtual threads
+ *   Step 6  which Java this is (Runtime.version())
  *
- * Run it:  java 01-java-core/J11_ModernJavaFeatures.java
- *          (or click "Run" above main() in VS Code)
+ * HOW TO RUN   java 01-java-core/J11_ModernJavaFeatures.java   (or click "Run" above main)
+ * READ FIRST   J11_ModernJavaFeatures.md
  */
 public class J11_ModernJavaFeatures {
 
@@ -46,6 +51,7 @@ public class J11_ModernJavaFeatures {
                 new Payment("TXN3", 300, Status.PENDING),
                 new Payment("TXN4", 15_000, Status.SUCCESS));
 
+        // Step 1: the four functional interfaces you must know, plus your own.
         step("Step 1: lambdas and functional interfaces (Java 8)");
         Predicate<Payment> isLarge = p -> p.amount() > 10_000;       // yes/no check
         Function<Payment, String> toId = Payment::txnId;              // converts one thing to another
@@ -60,6 +66,7 @@ public class J11_ModernJavaFeatures {
         FeeRule twoPercent = amount -> amount * 2 / 100;             // our own functional interface
         System.out.println("  FeeRule 2% on 1000 = " + twoPercent.fee(1000));
 
+        // Step 2: small quality-of-life features you use every day.
         step("Step 2: var, text blocks and String helpers (Java 10, 11, 15)");
         System.out.println("  var payments -> a List of " + payments.size() + " payments");
         String json = """
@@ -72,6 +79,7 @@ public class J11_ModernJavaFeatures {
         System.out.println("  \"   \".isBlank()   = " + "   ".isBlank());               // Java 11
         System.out.println("  \"=\".repeat(10)    = " + "=".repeat(10));                // Java 11
 
+        // Step 3: a switch that RETURNS a value, has no break, and must cover every case.
         step("Step 3: switch expressions (Java 14)");
         for (Payment p : payments) {
             String action = switch (p.status()) {     // returns a value, no break, no fall-through
@@ -82,6 +90,7 @@ public class J11_ModernJavaFeatures {
             System.out.println("  " + p.txnId() + " " + p.status() + " -> " + action);
         }
 
+        // Step 4: sealed + records + pattern matching: the compiler knows every possible type.
         step("Step 4: records, sealed types and pattern matching (Java 16, 17, 21)");
         List<PaymentResult> results = List.of(
                 new Success("TXN1", 1_200), new Failure("TXN2", "insufficient balance"), new Pending("TXN3"));
@@ -98,12 +107,15 @@ public class J11_ModernJavaFeatures {
             System.out.println("  instanceof pattern: amount = " + s.amount());
         }
 
+        // Step 5: 1,000 tasks that each WAIT 100 ms (like an HTTP call).
         step("Step 5: virtual threads (Java 21), 1,000 tasks that each wait 100 ms");
         long platformMs = runTasks(Executors.newFixedThreadPool(50), 1_000);
         System.out.println("  50 platform threads: " + platformMs + " ms  (1000 / 50 = 20 rounds x 100 ms = ~2000)");
         long virtualMs = runTasks(Executors.newVirtualThreadPerTaskExecutor(), 1_000);
         System.out.println("  virtual threads    : " + virtualMs + " ms  (all 1000 wait at the same time = ~100)");
+        System.out.println("  Notice: virtual threads help code that WAITS (HTTP, DB), not CPU-heavy code.");
 
+        // Step 6: the version running this file.
         step("Step 6: which Java is this?");
         System.out.println("  Runtime.version() = " + Runtime.version() + " (feature release " + Runtime.version().feature() + ")");
     }

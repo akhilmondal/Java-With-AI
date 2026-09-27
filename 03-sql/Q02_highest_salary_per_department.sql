@@ -72,7 +72,7 @@ ORDER BY d.name;
 
 
 -- THE COMMON MISTAKE: adding the name to a GROUP BY query.
--- SELECT department_id, name, MAX(salary) FROM employees GROUP BY department_id;
+-- SELECT department_id, name, MAX(salary) FROM employees GROUP BY department_id
 -- PostgreSQL error: column "employees.name" must appear in the GROUP BY clause
 --                   or be used in an aggregate function
 -- A department's pile has 3 names, and the database can't know which one you mean.
@@ -80,7 +80,7 @@ ORDER BY d.name;
 
 
 -- ============================================================================
--- SOLUTION 2: a window function (who earns it; the best general answer)
+-- SOLUTION 2: a window function (who earns it, the best general answer)
 -- ============================================================================
 -- Rank people inside each department (PARTITION BY), then keep rank 1.
 -- DENSE_RANK keeps BOTH people if two share the top salary in one department.
@@ -130,7 +130,7 @@ ORDER BY d.name, e.salary DESC;
 
 
 /* ============================================================================
-   HOW TO EXPLAIN IT IN THE INTERVIEW (your own words; cover these points)
+   HOW TO EXPLAIN IT IN THE INTERVIEW (your own words, cover these points)
      1. For just the amount: GROUP BY department with MAX(salary).
      2. For WHO earns it, a plain GROUP BY can't return the name, so I use
         DENSE_RANK() OVER (PARTITION BY department ORDER BY salary DESC)
@@ -161,6 +161,18 @@ ORDER BY d.name, e.salary DESC;
      4. Why is SECURITY missing from all the results?
    ============================================================================ */
 
--- Answers: 1) each group has several names; name must be grouped or aggregated
+-- Answers: 1) each group has several names, name must be grouped or aggregated
 --          2) PARTITION BY   3) both Sneha and Karan (DENSE_RANK 1 for both)
 --          4) the INNER JOIN drops departments with no matching employees
+
+-- QUICK REVISION START
+-- Q02 Highest salary per department
+--   Amount only : SELECT d.name, MAX(e.salary) FROM employees e JOIN departments d ON d.id = e.department_id
+--                 GROUP BY d.name                         -> BILLING 90000, PAYMENTS 90000, UI 75000
+--   Who earns it: DENSE_RANK() OVER (PARTITION BY department_id ORDER BY salary DESC) in a subquery,
+--                 keep rank 1                              -> Sneha, Meera, Neha (ties would show both)
+--   Also        : WHERE salary = (SELECT MAX(salary) ... same department) | PostgreSQL: DISTINCT ON (dept)
+--   Trap        : SELECT name with GROUP BY department_id -> error (a group has many names)
+--   30-second answer: "GROUP BY department with MAX for the amount. For the person, rank inside each
+--                 department with DENSE_RANK and PARTITION BY, then keep rank 1, that keeps ties too."
+-- QUICK REVISION END

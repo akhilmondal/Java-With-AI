@@ -1,104 +1,145 @@
-# Lesson template
+# Lesson template (v2)
 
-These are skeletons for a Java concept lesson (a `.md` + `.java` pair) and for the chat reply. Other topic types (SQL, Spring Boot, Angular) reuse the sections where they fit: the problem, the picture, steps with one running example, how to explain it, follow-ups, and the self-check.
+These are skeletons for the `.md` lesson, the `.java` demo, the QUICK REVISION block in code files, and the chat reply. The filled-in reference is `01-java-core/J01_HashMapInternals.md` plus its `.java`. Match its tone, depth and layout.
 
-The filled-in example is `01-java-core/J01_HashMapInternals.md` and `.java`.
-
-## .md skeleton
+## `.md` skeleton
 
 ~~~markdown
 # <ID> · <Topic in plain words>
 
-**Read this first (<N> min). Then run [<ID>_<Name>.java](<ID>_<Name>.java) to watch each step happen.**
+> **In one line:** <the whole idea in one sentence, with no jargon that isn't explained>
 
-Don't memorize sentences. Understand the <K> steps and the example with <running example>. Once you get those, you can explain <topic> in your own words.
-
-<If it builds on an earlier topic, one line linking it, e.g. J01's "hashCode picks the bucket, equals picks the entry".>
+| ⏱️ Read | 🧪 Run | 🎯 Asked |
+|---|---|---|
+| <N> min | `java <folder>/<ID>_<Name>.java` | <where it comes up; what product companies push on> |
 
 ---
 
-## The problem
+## 🧩 Words you need
 
-<Before: what goes wrong or is slow without it, with a number.> <After: what it does instead.>
+| Word | In one line |
+|---|---|
+| **<term>** | <plain meaning, tied to the example> |
 
-## Real-life picture: <analogy>
+---
 
-<3–5 bullets telling the analogy as a small story.>
+## 🖼️ Picture it: <everyday analogy>
 
-| <Analogy> | Java |
+<2 to 4 short sentences telling the analogy as a tiny story.>
+
+```mermaid
+flowchart LR
+    A["<real value from the example>"] -->|"<what happens>"| B["<result>"]
+```
+
+👀 **Notice:** <what the reader should look at in the diagram>
+
+| <Analogy> | <Tech> |
 |---|---|
 | ... | ... |
 
+---
+
+## 🔬 How it works, step by step
+
+### Step 1 · <action, using the running example>
+
+<1 to 3 short sentences. Show the numbers first, then the rule.>
+
+```mermaid
+<a small diagram of this step>
+```
+
+👀 **Notice:** <the takeaway>
+
+<Repeat for each step. Every rule answers "why?" in one sentence.>
+
+---
+
+## 💻 Code you should be able to write
+
+```java
+// the essential code, 12 lines or fewer, with comments that explain intent
+```
+
+**What the demo prints** (from a real run):
+
 ```text
-<small ASCII picture of the running example>
+<copied from the actual output>
 ```
 
 ---
 
-## Step by step
+## ⚠️ Traps interviewers love
 
-<One sentence that sets up the running example.>
-
-### Step 1 · <action>
-
-<What happens, with the numbers worked out.>
-
-```text
-<state after this step>
-```
-
-> **<one-line takeaway worth remembering>**
-
-### Step N · <a rule>
-
-<Numbers first, then the analogy, then why. Never state a bare rule.>
-
-<If there are several cases, finish with one summary table of all of them.>
+| Trap | Why it's wrong | Do this instead |
+|---|---|---|
+| ... | ... | ... |
 
 ---
 
-## How to explain it in the interview
+## 🎯 In the interview
 
-Use your own words. Cover these points in this order, using <the running example>:
+**What they're really testing**
+- *Service companies:* <the definition-level check>
+- *Product companies:* <the deeper check: edge cases, cost, trade-offs, design>
 
+**Say it in this order:**
 1. ...
 2. ...
 
-**Here's how it can sound** (about a minute, simple words):
+**Sample answer** (about a minute, in your own words):
 
 > "..."
 
-**Tip:** <one practical move, e.g. "ask if you can explain with a small example and draw it">
+**Product-company deep dive:**
+- **Q:** ... **A:** ...
 
 ---
 
-## Follow-up questions (simple answers)
+## ❓ Follow-up questions
 
 **<Question>?**
-<A 1–3 sentence answer, with a tiny example where possible.>
-
-*Only if they push further:* <a deeper detail, e.g. JDK internals or a JPA/Spring angle>
+<a 1 to 3 sentence answer>
 
 ---
 
-## Numbers to remember   (or "Rules to remember")
+## 🧪 Test yourself (answer aloud, then click)
 
-| What | Value |
-|---|---|
-| ... | ... |
+<details><summary>1. <question with numbers from the example></summary>
 
-## Self-check (answer aloud, then click to check)
-
-<details><summary>1. <a question with numbers from the running example></summary>
-
-<the answer, with the working shown>
+<answer, with the working shown>
 
 </details>
 
-If you get stuck on any of them, add it to [STUMBLE-LIST.md](../STUMBLE-LIST.md). When all <M> feel easy, tick <ID> in the [README](../README.md) and send `next`.
+If you get stuck on one, add it to [STUMBLE-LIST.md](../STUMBLE-LIST.md). When they all feel easy, tick <ID> in the [README](../README.md) and send `next`.
+
+---
+
+## ⚡ Quick Revision (2 hours before the interview)
+
+```mermaid
+<ONE diagram that holds the whole idea>
+```
+
+**🧠 Must remember**
+1. <fact with a number>
+2. ...
+
+**⚠️ Top traps**
+- ...
+
+**🎯 30-second answer:** "<the answer skeleton in 3 or 4 sentences>"
+
+**🔑 Memory hook:** <one vivid line>
+
+**🗣️ Say it aloud (no peeking):**
+1. ...
+2. ...
+3. ...
 ~~~
 
-## .java skeleton
+## `.java` skeleton
 
 ~~~java
 import java.util.HashMap;   // import exactly what's used
@@ -107,21 +148,20 @@ import java.util.Map;
 /*
  * <ID>  <Topic>: runnable demo
  *
- * Read <ID>_<Name>.md first. This file runs the same steps so you can see
- * them happen. The step numbers match the .md file.
+ * WHAT YOU WILL SEE (the numbers match <ID>_<Name>.md)
+ *   Step 1  <one line: what happens and the key number>
+ *   Step 2  ...
  *
- * Run it:  java <folder>/<ID>_<Name>.java
- *          (or click "Run" above main() in VS Code)
+ * HOW TO RUN   java <folder>/<ID>_<Name>.java   (or click "Run" above main)
+ * READ FIRST   <ID>_<Name>.md
  */
 public class <ID>_<Name> {
 
     public static void main(String[] args) {
+        // Step 1: <what happens, in plain words>. Look for <the number that matters>.
         step("Step 1: <action>");
-        // the running example, with a short comment on every line that matters
-        // and the expected value where it helps, e.g.  // 101 % 16 = 5
-
-        step("Step 2: <action>");
-        // ...
+        // ... the running example, with a short comment on each important line
+        System.out.println("Notice: <the takeaway, in one line>");
     }
 
     // Helper types are nested static classes with readable names.
@@ -134,25 +174,34 @@ public class <ID>_<Name> {
 }
 ~~~
 
+## QUICK REVISION block (in `.java` and `.sql` files)
+
+~~~text
+/*
+ * QUICK REVISION START
+ * <topic>
+ * Must remember: ...
+ * Traps: ...
+ * 30-second answer: ...
+ * Memory hook: ...
+ * QUICK REVISION END
+ */
+~~~
+
+In `.sql` files, use `--` lines between `-- QUICK REVISION START` and `-- QUICK REVISION END`.
+
 ## Chat reply skeleton (new lesson)
 
 ~~~markdown
-<One line: which topic this is and how it connects to the last one.>
+<One line: the topic and how it connects to the last one.>
 
-## <Topic> in simple words
+**The idea:** <one sentence>
 
-**Why it exists:** ...
-**The picture:** <the analogy in one or two lines>
+<one small table or diagram, if it fits>
 
-Now follow <running example>:
-1. ...
-2. ...
+**In the interview:** 1. ... 2. ... 3. ...
 
-**In the interview:** <the ordered points or the one-minute sample>
+**Files:** read `<ID>_<Name>.md` (ends with ⚡ Quick Revision), run `java <folder>/<ID>_<Name>.java` (you'll see ...).
 
-## Files
-- **Read first:** `<folder>/<ID>_<Name>.md`: <what's inside>
-- **Then run:** `java <folder>/<ID>_<Name>.java`: <what they'll see>
-
-**Your turn:** read → run → explain it aloud using <example> → `grade: <your answer>` or `next`.
+**Your turn:** read → run → explain it aloud → `grade: <your answer>` or `next`.
 ~~~

@@ -10,7 +10,7 @@
    HOW TO RUN
      Paste Q00_setup.sql into db-fiddle's left box and this file into the right
      box. Parts marked "PostgreSQL only" won't run on other databases.
-     If db-fiddle complains about BEGIN or COMMIT, delete those lines; the
+     If db-fiddle complains about BEGIN or COMMIT, delete those lines, the
      other statements still show the idea.
    ============================================================================ */
 
@@ -19,7 +19,7 @@
 -- PART A: INDEXES
 -- ============================================================================
 -- Real-life picture: the index at the back of a textbook. Without it, you
--- read all 500 pages to find "HashMap"; with it, you jump to page 213.
+-- read all 500 pages to find "HashMap", with it, you jump to page 213.
 -- Without an index, the database reads every row: a "Seq Scan" (sequential scan).
 -- With a B-tree index it plays "higher or lower" (J01) and finds the row in a
 -- few steps.
@@ -70,8 +70,8 @@ EXPLAIN SELECT * FROM payments WHERE txn_id = 'TXN77777';
 -- I = Isolation   : two transfers at the same time don't see each other's half-done work.
 -- D = Durability  : once COMMIT returns, the change survives a crash or power cut.
 -- Real-life picture: a branch transfer slip. Both ledger lines are written, or
--- the slip is torn up; the rules are checked; other cashiers don't see a
--- half-written slip; and once the receipt is stamped, it's final.
+-- the slip is torn up, the rules are checked, other cashiers don't see a
+-- half-written slip, and once the receipt is stamped, it's final.
 
 CREATE TABLE accounts (
     id       INT PRIMARY KEY,
@@ -102,7 +102,7 @@ SELECT id, owner, balance FROM accounts ORDER BY id;
 -- Result: still Rahul 700, Priya 800
 
 -- Consistency in action (commented out, because the error would stop the rest of the file):
--- UPDATE accounts SET balance = balance - 5000 WHERE id = 1;
+-- UPDATE accounts SET balance = balance - 5000 WHERE id = 1
 -- ERROR: new row for relation "accounts" violates check constraint "accounts_balance_check"
 
 
@@ -119,11 +119,11 @@ SELECT id, owner, balance FROM accounts ORDER BY id;
         A: ROLLBACK                   <- B used a balance that never existed
    2. NON-REPEATABLE READ: the same row, read twice, gives two answers
         A: reads 700
-        B: UPDATE to 400; COMMIT
+        B: UPDATE to 400, COMMIT
         A: reads again -> 400         <- changed in the middle of A's work
    3. PHANTOM READ: the same query, run twice, finds new rows
         A: SELECT COUNT(*) FROM payments WHERE status = 'FAILED'  -> 10000
-        B: INSERT a FAILED payment; COMMIT
+        B: INSERT a FAILED payment, COMMIT
         A: the same count -> 10001    <- a "phantom" row appeared
 
    Level                          dirty read   non-repeatable read   phantom read
@@ -131,8 +131,8 @@ SELECT id, owner, balance FROM accounts ORDER BY id;
    READ COMMITTED (PG default)    no           possible              possible
    REPEATABLE READ                no           no                    possible**
    SERIALIZABLE                   no           no                    no
-   *  PostgreSQL never allows dirty reads; READ UNCOMMITTED acts like READ COMMITTED.
-   ** by the SQL standard; PostgreSQL's REPEATABLE READ also blocks phantoms.
+   *  PostgreSQL never allows dirty reads, READ UNCOMMITTED acts like READ COMMITTED.
+   ** by the SQL standard, PostgreSQL's REPEATABLE READ also blocks phantoms.
    Stricter levels are safer but slower: more waiting, more retries.
 
    THE PAYMENTS PROBLEM: a LOST UPDATE (double debit)
@@ -142,12 +142,12 @@ SELECT id, owner, balance FROM accounts ORDER BY id;
 
    THREE FIXES
      1. Let the database do the math in ONE statement (atomic):
-          UPDATE accounts SET balance = balance - 100 WHERE id = 1 AND balance >= 100;
+          UPDATE accounts SET balance = balance - 100 WHERE id = 1 AND balance >= 100
      2. Pessimistic lock: lock the row while you work on it (PostgreSQL):
-          BEGIN;
-          SELECT balance FROM accounts WHERE id = 1 FOR UPDATE;   -- others wait here
-          UPDATE accounts SET balance = balance - 100 WHERE id = 1;
-          COMMIT;
+          BEGIN
+          SELECT balance FROM accounts WHERE id = 1 FOR UPDATE   -- others wait here
+          UPDATE accounts SET balance = balance - 100 WHERE id = 1
+          COMMIT
      3. Optimistic lock: a version number. Update only if nobody changed the row
         since you read it. In Spring/JPA, this is the @Version annotation. */
 
@@ -175,7 +175,7 @@ COMMIT;
 
 
 /* ============================================================================
-   HOW TO EXPLAIN IT IN THE INTERVIEW (your own words; cover these points)
+   HOW TO EXPLAIN IT IN THE INTERVIEW (your own words, cover these points)
      Indexes:
        1. An index is like a book's index: a sorted B-tree, so a lookup takes
           a few steps instead of reading every row. EXPLAIN shows Seq Scan vs
@@ -230,6 +230,24 @@ COMMIT;
    ============================================================================ */
 
 -- Answers: 1) usually not: amount isn't the leftmost column
---          2) 500 (the last write wins); it should be 400. That's a lost update
+--          2) 500 (the last write wins), it should be 400. That's a lost update
 --          3) READ COMMITTED
 --          4) it updates 0 rows, so the app re-reads the row and retries
+
+-- QUICK REVISION START
+-- Q07 Indexes, ACID, isolation
+--   Index     : a sorted B-tree, like a book's index -> EXPLAIN shows "Index Scan" instead of "Seq Scan".
+--               Composite (status, amount) helps "status = ?" and "status = ? AND amount > ?",
+--               not "amount > ?" alone (the leftmost-column rule). Costs: slower writes, more disk.
+--   ACID      : Atomicity (all or nothing) | Consistency (rules like balance >= 0 hold) |
+--               Isolation (no half-done work seen) | Durability (committed = survives a crash)
+--   Levels    : READ UNCOMMITTED < READ COMMITTED (PostgreSQL default) < REPEATABLE READ < SERIALIZABLE
+--               they stop dirty reads, then non-repeatable reads, then phantoms
+--   Lost update (double debit): both read 700, write 700-100 and 700-200 -> 500 instead of 400
+--   Fixes     : UPDATE ... SET balance = balance - 100 (atomic) | SELECT ... FOR UPDATE (lock) |
+--               a version column (optimistic, JPA @Version) -> the second update matches 0 rows, so retry
+--   30-second answer: "An index is a sorted B-tree so lookups skip the full scan, I index the columns I
+--               filter and join on and check EXPLAIN. ACID keeps transactions all-or-nothing, valid,
+--               isolated and durable. For wallet debits I prevent lost updates with an atomic UPDATE,
+--               SELECT FOR UPDATE, or optimistic locking with @Version."
+-- QUICK REVISION END

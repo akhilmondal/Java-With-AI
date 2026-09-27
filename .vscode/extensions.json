@@ -1,0 +1,8 @@
+{
+    // VS Code suggests these when you open the folder.
+    "recommendations": [
+        "vscjava.vscode-java-pack",          // Java: run, debug, code help
+        "bierner.markdown-mermaid",          // shows the ```mermaid diagrams in the Markdown preview (Ctrl+Shift+V)
+        "streetsidesoftware.code-spell-checker"
+    ]
+}

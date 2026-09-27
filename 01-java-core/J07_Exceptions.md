@@ -1,125 +1,137 @@
 # J07 · Checked vs unchecked exceptions, try-with-resources, custom exceptions
 
-**Read this first (10 min). Then run [J07_Exceptions.java](J07_Exceptions.java) to watch each step happen.**
+> **In one line:** **Checked** exceptions are problems outside your control, like files, network or DB, and the compiler **forces** you to handle them. **Unchecked** exceptions are bugs in your own code, so you fix the code. `finally` and **try-with-resources** make sure cleanup **always** happens, and **custom** exceptions give business errors a clear name.
 
-Don't memorize sentences. Understand the 7 steps and the example: **debit ₹1,500 from a balance of ₹1,000**. Once you get those, you can answer exception questions in your own words.
+| ⏱️ Read | 🧪 Run | 🎯 Asked |
+|---|---|---|
+| 10 min | `java 01-java-core/J07_Exceptions.java` | Every Java round. Spring rounds add "@Transactional rollback" |
 
 ---
 
-## The problem
+## 🧩 Words you need
 
-Things go wrong in a payment flow all the time: a config file is missing, a gateway times out, a balance is too low, a value is null. Java's exceptions let you:
-
-1. stop normal flow with a clear message,
-2. handle it in the right place,
-3. clean up (close connections) no matter what happened.
-
-Interviewers check whether you know the two kinds of exceptions, how cleanup works and how to design your own.
-
-## Real-life picture: the bank
-
-- **Checked exception:** the loan form has a **mandatory** field, "What if the cheque bounces?" The clerk (the compiler) won't accept the form until you fill it in: you either handle it (`catch`) or pass it on (`throws`).
-- **Unchecked exception:** a mistake in your own work, like dividing by zero or paying from an empty wallet (null). There's no form field for it, so fix your code.
-- **Error:** the building is on fire (OutOfMemoryError). You don't handle it, you get out (let the app crash and restart).
-- **finally:** switching off the office lights when you leave, whether the day went well or not.
-- **try-with-resources:** a hotel key card that stops working at checkout by itself. Resources close themselves, and the **last one opened is closed first**, like a stack of plates.
-
-| Bank | Java |
+| Word | In one line |
 |---|---|
-| a mandatory "what if" field on the form | a checked exception (`IOException`, `SQLException`) |
-| a mistake in your own work | an unchecked exception (`NullPointerException`, `IllegalArgumentException`) |
-| the building on fire | an `Error` (`OutOfMemoryError`, `StackOverflowError`) |
-| always switching off the lights | `finally` |
-| a key card that deactivates itself | try-with-resources (`AutoCloseable`) |
+| **checked exception** | the compiler makes you `catch` it or declare it with `throws` |
+| **unchecked exception** | a `RuntimeException`; the compiler doesn't force anything |
+| **Error** | a serious JVM problem, like `OutOfMemoryError`; don't catch it |
+| **finally** | a block that runs **every time**: after success, after a catch, even after a return |
+| **AutoCloseable** | anything with a `close()` method that try-with-resources can close for you |
 
-```text
-                 Throwable
-               /           \
-          Error             Exception
-   (OutOfMemoryError,      /            \
-    StackOverflowError)   RuntimeException   IOException, SQLException, ...
-                          = UNCHECKED        = CHECKED
-                          (NullPointer, IllegalArgument,
-                           Arithmetic, NumberFormat, ...)
+---
+
+## 🖼️ Picture it: the family tree
+
+```mermaid
+classDiagram
+    Throwable <|-- Error
+    Throwable <|-- Exception
+    Exception <|-- RuntimeException
+    Exception <|-- IOException
+    Exception <|-- SQLException
+    RuntimeException <|-- NullPointerException
+    RuntimeException <|-- IllegalArgumentException
+    RuntimeException <|-- ArithmeticException
+    Error <|-- OutOfMemoryError
+    Error <|-- StackOverflowError
+    class RuntimeException {
+        <<UNCHECKED>>
+    }
+    class IOException {
+        <<CHECKED>>
+    }
+    class SQLException {
+        <<CHECKED>>
+    }
+    class Error {
+        <<do not catch>>
+    }
 ```
 
+👀 **Notice:** everything under **RuntimeException** is **unchecked**. Every **other** Exception is **checked**. Errors are for the JVM.
+
+**Real-life picture: the bank.**
+- **Checked:** the loan form has a **mandatory** field, "What if the cheque bounces?" The clerk (the compiler) won't accept the form until you fill it in, either by handling it (`catch`) or passing it on (`throws`).
+- **Unchecked:** a mistake in **your own** work, like dividing by zero or paying from an empty wallet (null). There's no form field for it, so fix your work.
+- **Error:** the building is on fire. You don't handle it; you get out, and the app restarts.
+- **finally:** switching off the lights when you leave, whether the day went well or not.
+
 ---
 
-## Step by step
+## 🔬 How it works, step by step
 
-### Step 1 · The family tree
+The running example is **debiting ₹1,500 from a balance of ₹1,000**.
 
-- Everything that can be thrown is a `Throwable`.
-- **Error:** serious JVM problems. Don't catch them.
-- **Exception**, which splits in two:
-  - **RuntimeException** and its subclasses are **unchecked**. The compiler doesn't force you to handle them.
-  - **Every other Exception** is **checked**. The compiler forces you to catch it or declare it.
-
-### Step 2 · Checked: the compiler forces you
+### Step 1 · Checked exceptions: the compiler forces you
 
 ```java
-static String readGatewayConfig() throws IOException {      // must declare it...
+static String readGatewayConfig() throws IOException {         // must declare it...
     return Files.readString(Path.of("config/missing-gateway.properties"));
 }
 ```
 
-Without `throws IOException`, javac refuses to compile: *"unreported exception java.io.IOException; must be caught or declared to be thrown"*. The caller must then `catch (IOException e)` or declare it too.
+Without `throws IOException`, javac refuses to compile, with *"unreported exception java.io.IOException; must be caught or declared to be thrown"*. The demo catches **`NoSuchFileException: config\missing-gateway.properties`**.
 
-The demo reads a file that doesn't exist and catches: **`NoSuchFileException: config\missing-gateway.properties`**.
+🧠 Checked exceptions are for things **outside your control** that a caller could recover from: files, network, database.
 
-Checked exceptions are for problems **outside your control** that a caller could recover from: files, network, database.
+### Step 2 · Unchecked exceptions: bugs in your own code
 
-### Step 3 · Unchecked: bugs in your own code
-
-| Code | Exception | Message in the demo |
+| Code | Exception | The demo's message |
 |---|---|---|
 | `1000 / 0` | ArithmeticException | `/ by zero` |
-| `gatewayName.length()` when it's null | NullPointerException | `Cannot invoke "String.length()" because "J07_Exceptions.gatewayName" is null` |
+| `gatewayName.length()` (null) | NullPointerException | `Cannot invoke "String.length()" because "J07_Exceptions.gatewayName" is null` |
 | `Integer.parseInt("12a")` | NumberFormatException | `For input string: "12a"` |
 
-The compiler doesn't force you to catch these. The right fix is **better code**: validate inputs and check for null. Since Java 14, NullPointerException messages say exactly **which** variable was null, as you can see above.
+👀 **Notice:** since Java 14, the NullPointerException says **exactly which variable** was null. The fix for these is better code (validate inputs, check for null), not more catch blocks.
 
-### Step 4 · try, catch, finally
+### Step 3 · try → catch → finally
 
-```text
-try     : debit Rs 1500 from a balance of Rs 1000
-catch   : Balance 1000 is less than 1500
-finally : always runs (close the payment log here)
+```mermaid
+flowchart TD
+    T["try: debit(1000, 1500)"] --> E{"exception?"}
+    E -->|"yes"| C["catch: Balance 1000 is less than 1500"]
+    E -->|"no"| F
+    C --> F["finally: ALWAYS runs<br/>(close the payment log)"]
 ```
 
 - The line after `debit(...)` inside `try` **never runs**, because the exception jumps straight to `catch`.
-- `finally` runs **every time**: after success, after a catch, and even after a `return` inside try. The only exceptions are `System.exit()` or the JVM crashing.
+- `finally` runs **every time**. Only `System.exit()` or a JVM crash skips it.
 
-**The trap:** if both try and finally return a value, finally wins:
+⚠️ **The trap:** `try { return 1; } finally { return 2; }` returns **2**. A return in finally replaces the try's return, and can even hide an exception. Never return from finally.
 
-```java
-try { return 1; } finally { return 2; }     // the method returns 2
-```
-
-A return in finally can even hide an exception, so never return from finally.
-
-### Step 5 · try-with-resources
+### Step 4 · try-with-resources: closes things for you, in reverse order
 
 ```java
 try (DbConnection db = new DbConnection();     // opened 1st
      AuditLog log = new AuditLog()) {           // opened 2nd
     db.save("TXN1001");
     log.write("debit TXN1001");
-}                                               // closed automatically: log 1st, then db
+}                                               // closed automatically
 ```
 
-Any class that implements `AutoCloseable` can go in the brackets. It closes automatically **in reverse order**, whether the body succeeded or threw.
+```mermaid
+sequenceDiagram
+    participant T as try-with-resources
+    participant DB as DbConnection
+    participant L as AuditLog
+    T->>DB: open (1st)
+    T->>L: open (2nd)
+    T->>DB: save TXN1001
+    T->>L: write debit TXN1001
+    T->>L: close (1st to close)
+    T->>DB: close (last to close)
+```
 
-**If both the body and close() throw**, you don't lose either. The body's exception is thrown, and the close() error is attached to it as **suppressed**:
+👀 **Notice:** **the last one opened is closed first**, like a stack of plates.
+
+**If both the body and `close()` throw**, you don't lose either. The body's exception is thrown, and the close error is attached to it as **suppressed**:
 
 ```text
 caught    : debit failed
 suppressed: audit log close failed
 ```
 
-Before Java 7 this took a finally block with its own try/catch inside. try-with-resources is shorter and never forgets.
-
-### Step 6 · A custom exception
+### Step 5 · A custom exception: a clear name for a business error
 
 ```java
 class InsufficientBalanceException extends RuntimeException {
@@ -132,15 +144,20 @@ class InsufficientBalanceException extends RuntimeException {
 }
 ```
 
-`debit(1000, 1500)` throws it, and the demo prints "Balance 1000 is less than 1500" and "short by Rs 500".
+`debit(1000, 1500)` gives "Balance 1000 is less than 1500", **short by ₹500**.
 
-**Checked or unchecked?** In Spring apps, business errors are usually **unchecked** (extend RuntimeException), for two reasons:
-- The code stays clean: you don't need `throws` on every method up the chain.
-- `@Transactional` rolls back automatically **only for unchecked exceptions** (topic B05), which is exactly what you want when a debit fails.
+💡 **Why unchecked (RuntimeException) in Spring apps?**
+- The code stays clean, with no `throws` on every method up the chain.
+- `@Transactional` rolls back automatically **only for unchecked exceptions** (B05). That's exactly what you want when a debit fails.
+- A global `@RestControllerAdvice` turns it into a clean HTTP error (B07).
 
-A global `@RestControllerAdvice` then turns it into a clean HTTP error (topic B07).
+### Step 6 · Wrap it, but keep the cause
 
-### Step 7 · Wrap it, but keep the cause
+```mermaid
+flowchart LR
+    L["NoSuchFileException<br/>(low-level: which file)"] -->|"wrapped as the cause"| P["PaymentFailedException<br/>'Could not load PayU gateway config'"]
+    P --> Logs["logs show both:<br/>the message + 'Caused by: ...'"]
+```
 
 ```java
 catch (IOException e) {
@@ -148,79 +165,99 @@ catch (IOException e) {
 }
 ```
 
-The caller gets **your** clear message, and the original error is still inside, so logs show a "Caused by: NoSuchFileException" line. If you don't pass `e`, the real reason is lost forever.
-
-### Good habits in one list
-
-- Catch **specific** exceptions, not `Exception`.
-- Never leave a catch block empty.
-- Keep the **cause** when you wrap.
-- **Throw early** (validate at the start) and **catch late** (at the boundary, like a controller advice).
-- Log an exception **once**, not at every level.
-- Use try-with-resources for anything that needs closing.
+👀 **Notice:** the caller gets **your** clear message, and the real reason survives inside. Forget to pass `e`, and the real reason is gone forever.
 
 ---
 
-## How to explain it in the interview
+## 💻 Code you should be able to write
 
-Use your own words. Cover these points in this order, using the ₹1,000 balance and the ₹1,500 debit:
+```java
+public void debit(long balance, long amount) {
+    if (amount <= 0) throw new IllegalArgumentException("amount must be positive");   // throw early
+    if (amount > balance) throw new InsufficientBalanceException(balance, amount);    // business rule
+    // ... debit ...
+}
 
-1. All exceptions come from **Throwable**, which has two branches. **Error** is for JVM problems you shouldn't catch. **Exception** is for problems your code can handle.
-2. **Checked** exceptions (IOException, SQLException) must be caught or declared, because the compiler forces it. **Unchecked** exceptions (RuntimeException and its subclasses: NullPointerException, IllegalArgumentException) usually mean a bug and aren't forced.
-3. **finally** always runs, which makes it the place for cleanup. Never return from it.
-4. **try-with-resources** closes AutoCloseable resources automatically, in reverse order, and keeps close() errors as suppressed exceptions.
-5. **Custom exceptions:** in Spring, usually extend RuntimeException with a clear message, like InsufficientBalanceException. @Transactional rolls back on them by default. When wrapping, keep the original as the **cause**.
+try (Connection con = dataSource.getConnection();
+     PreparedStatement ps = con.prepareStatement(sql)) {    // both closed automatically, in reverse order
+    ps.executeUpdate();
+} catch (SQLException e) {
+    throw new PaymentFailedException("debit failed for " + txnId, e);                // wrap, keep the cause
+}
+```
 
-**Here's how it can sound** (about a minute, simple words):
+**What the demo prints** (from a real run):
 
-> "In Java all exceptions come from Throwable. Errors like OutOfMemoryError are JVM problems we don't catch. Exceptions split into checked and unchecked. Checked ones, like IOException, must be caught or declared, because they're about things outside our control, like a missing file. Unchecked ones extend RuntimeException, like NullPointerException, and usually mean a bug, so the compiler doesn't force us. finally always runs, so it's for cleanup, and I avoid returning from it because it overrides the try's return. For resources like connections I use try-with-resources, which closes them automatically in reverse order. For business rules I create custom unchecked exceptions, for example InsufficientBalanceException when the balance is 1,000 and the debit is 1,500. In Spring that also means @Transactional rolls back by default, and a @RestControllerAdvice turns it into a proper HTTP response."
-
-**Tip:** if asked "checked or unchecked for your custom exception?", answer with the reason: unchecked, because of clean code and @Transactional rollback.
+```text
+=== Step 4: try, catch, finally ===
+try     : debit Rs 1500 from a balance of Rs 1000
+catch   : Balance 1000 is less than 1500
+finally : always runs (close the payment log here)
+return in try (1) and in finally (2) -> method returns 2
+```
 
 ---
 
-## Follow-up questions (simple answers)
+## ⚠️ Traps interviewers love
+
+| Trap | Why it's wrong | Do this instead |
+|---|---|---|
+| An empty `catch {}` | the error disappears silently | log it, or rethrow with a cause |
+| `catch (Exception e)` everywhere | it hides bugs and catches too much | catch specific types; use a global handler at the edge |
+| `return` inside `finally` | it replaces the try's return and hides exceptions | never return from finally |
+| Wrapping without the cause | the real reason is lost | `new MyException("msg", e)` |
+| A checked exception in a `@Transactional` method | by default it **does not roll back** | throw unchecked, or `rollbackFor = Exception.class` |
+
+---
+
+## 🎯 In the interview
+
+**What they're really testing**
+- *Service companies:* checked vs unchecked, throw vs throws, final/finally/finalize, and try-with-resources.
+- *Product companies:* designing an exception strategy (custom exceptions, wrapping with a cause, where to catch), suppressed exceptions, @Transactional rollback rules, and exceptions across threads (ExecutionException).
+
+**Say it in this order:**
+1. Everything comes from **Throwable**, which has two branches. **Error** is for JVM problems you don't catch. **Exception** is for problems you handle.
+2. **Checked** (IOException, SQLException): you must catch or declare them. **Unchecked** (RuntimeException and below): usually bugs, not forced.
+3. **finally** always runs, so do cleanup there, and never return from it.
+4. **try-with-resources** closes AutoCloseable resources automatically, in reverse order, and keeps close errors as suppressed.
+5. **Custom exceptions:** in Spring, extend RuntimeException with a clear message, which also gets @Transactional rollback. When wrapping, keep the **cause**.
+
+**Sample answer** (about a minute, in your own words):
+
+> "In Java all exceptions come from Throwable. Errors like OutOfMemoryError are JVM problems we don't catch. Exceptions split into checked and unchecked. Checked ones, like IOException, must be caught or declared, because they're about things outside our control, like a missing file. Unchecked ones extend RuntimeException, like NullPointerException, and usually mean a bug. finally always runs, so it's for cleanup, and I never return from it because that overrides the try's return. For resources like connections I use try-with-resources, which closes them automatically in reverse order. For business rules I create custom unchecked exceptions, like InsufficientBalanceException when the balance is 1,000 and the debit is 1,500. In Spring, that means @Transactional rolls back by default, and a @RestControllerAdvice turns it into a proper HTTP response."
+
+**Product-company deep dive:**
+- **Q: Where should exceptions be caught?**
+  **A:** **Throw early** (validate at the start) and **catch late**, at a boundary like a controller advice that logs once and returns a clean error. Don't log and rethrow at every level.
+- **Q: What happens to an exception inside a thread-pool task?**
+  **A:** It's stored in the Future, and `get()` throws an `ExecutionException` with it as the cause (J06).
+- **Q: Can an overriding method throw more exceptions?**
+  **A:** It can't throw **broader checked** exceptions than the parent method. It can throw fewer, narrower or unchecked ones.
+- **Q: Why does @Transactional not roll back on checked exceptions?**
+  **A:** Spring's default treats checked exceptions as "expected business outcomes". Use `@Transactional(rollbackFor = Exception.class)` if a checked exception should undo the debit.
+
+---
+
+## ❓ Follow-up questions
 
 **throw vs throws?**
-`throw` actually throws one exception object: `throw new X(...)`. `throws` in a method signature declares which checked exceptions the method may throw.
+`throw` actually throws one exception object. `throws` in a method signature declares which checked exceptions it may throw.
 
 **final vs finally vs finalize?**
-`final` is a keyword: a variable that can't be reassigned, a method that can't be overridden, a class that can't be extended. `finally` is the block that always runs. `finalize()` was an old cleanup method the garbage collector called. It's deprecated, so don't use it.
+- `final` stops a variable being reassigned, a method being overridden, or a class being extended.
+- `finally` is the block that always runs.
+- `finalize()` was an old GC hook; it's deprecated, so don't use it.
 
 **Can you have try without catch?**
 Yes: `try { } finally { }`, or try-with-resources on its own.
 
-**What's multi-catch?**
-`catch (IOException | SQLException e)` handles several exception types with one block.
-
-**Does the order of catch blocks matter?**
-Yes, specific before general. If `catch (Exception e)` comes first, a later `catch (IOException e)` could never run, so javac rejects it.
-
-**Can an overriding method throw more exceptions?**
-Not broader **checked** exceptions than the parent method declares. It can throw fewer, narrower or unchecked ones.
-
-**Is catching Exception or Throwable ever OK?**
-Only at the outermost boundary, like a global handler that logs the error and returns a clean response. Never catch `Error` to keep running.
-
-**What happens to an exception thrown inside a thread pool task?**
-It's stored in the Future, and `future.get()` throws an `ExecutionException` with your exception as its cause (J06).
-
-*Only if they push further:* `@Transactional` does **not** roll back for checked exceptions by default; the transaction commits. If your service throws a checked exception on failure, add `@Transactional(rollbackFor = Exception.class)`. This matters a lot in payment code.
+**Multi-catch?**
+`catch (IOException | SQLException e)` handles several types in one block. Put specific catches **before** general ones, or the code won't compile.
 
 ---
 
-## Rules to remember
-
-| Rule | Why |
-|---|---|
-| checked = catch or declare | the compiler forces it (files, network, DB) |
-| unchecked = fix the code | usually a bug: null, bad input, a broken business rule |
-| finally always runs | cleanup; never `return` from it |
-| try-with-resources closes in reverse order | the last one opened is closed first; close errors become suppressed |
-| custom business exceptions extend RuntimeException | clean code, and @Transactional rolls back |
-| wrap with the cause | `new MyException("clear message", e)` |
-
-## Self-check (answer aloud, then click to check)
+## 🧪 Test yourself (answer aloud, then click)
 
 <details><summary>1. Is IOException checked or unchecked? And NullPointerException?</summary>
 
@@ -230,38 +267,68 @@ IOException is checked. NullPointerException is unchecked, because it extends Ru
 
 <details><summary>2. A method calls Files.readString(...). What must it do?</summary>
 
-It must catch IOException, or declare throws IOException. Otherwise it won't compile.
+Catch IOException, or declare throws IOException.
 
 </details>
 
 <details><summary>3. try returns 1 and finally returns 2. What does the method return?</summary>
 
-2. The finally's return replaces the try's, which is why you should never return from finally.
+2, the value from finally.
 
 </details>
 
-<details><summary>4. try-with-resources opens a DB connection first, then a LOG. In what order do they close?</summary>
+<details><summary>4. try-with-resources opens a DB connection, then a LOG. In what order do they close?</summary>
 
-LOG first, then the DB connection, in reverse order.
-
-</details>
-
-<details><summary>5. debit(balance 500, amount 800): which exception, and what message?</summary>
-
-InsufficientBalanceException: "Balance 500 is less than 800", and the account is short by ₹300.
+LOG first, then the DB connection: reverse order.
 
 </details>
 
-<details><summary>6. You catch an IOException and throw your own exception. How do you keep the real reason?</summary>
+<details><summary>5. What does debit(balance 500, amount 800) throw?</summary>
 
-Pass it as the cause: new PaymentFailedException("clear message", e).
-
-</details>
-
-<details><summary>7. Why are custom business exceptions usually unchecked in Spring apps?</summary>
-
-You don't need throws everywhere, and @Transactional rolls back automatically only for unchecked exceptions.
+InsufficientBalanceException: "Balance 500 is less than 800". The account is short by ₹300.
 
 </details>
 
-If you get stuck on any of them, add it to [STUMBLE-LIST.md](../STUMBLE-LIST.md). When all 7 feel easy, tick J07 in the [README](../README.md) and send `next`.
+<details><summary>6. Why are custom business exceptions usually unchecked in Spring?</summary>
+
+There's no throws clutter, and @Transactional rolls back automatically only for unchecked exceptions.
+
+</details>
+
+If you get stuck on one, add it to [STUMBLE-LIST.md](../STUMBLE-LIST.md). When they all feel easy, tick J07 in the [README](../README.md) and send `next`.
+
+---
+
+## ⚡ Quick Revision (2 hours before the interview)
+
+```mermaid
+flowchart TD
+    T["Throwable"] --> E["Error: do not catch<br/>(OutOfMemoryError, StackOverflowError)"]
+    T --> X["Exception"]
+    X --> C["CHECKED: must catch or declare<br/>(IOException, SQLException)"]
+    X --> R["RuntimeException = UNCHECKED<br/>(NullPointer, IllegalArgument)"]
+```
+
+**🧠 Must remember**
+1. **Checked** = outside your control (file, network, DB): **catch or declare** (`throws`).
+2. **Unchecked** = RuntimeException = a bug in your code: **fix the code**.
+3. **Error** = a JVM problem (OutOfMemoryError, StackOverflowError): don't catch it.
+4. **finally always runs.** A `return` in finally replaces the try's return (1 becomes 2). Never do it.
+5. **try-with-resources:** auto-close, **in reverse order**, and close errors become **suppressed**.
+6. **Custom business exceptions** extend **RuntimeException** with a clear message ("Balance 1000 is less than 1500").
+7. **Wrap with the cause:** `new PaymentFailedException("msg", e)`.
+8. **@Transactional** rolls back only on **unchecked** exceptions by default. For checked ones, use `rollbackFor = Exception.class`.
+
+**⚠️ Top traps**
+- An empty catch block.
+- Returning from finally.
+- Wrapping without the cause.
+
+**🎯 30-second answer:** "Checked exceptions like IOException are for things outside our control, and the compiler forces us to catch or declare them. Unchecked ones extend RuntimeException and usually mean bugs. finally always runs, so it's for cleanup, and try-with-resources closes resources automatically in reverse order. For business rules I throw custom unchecked exceptions with clear messages, which @Transactional rolls back on, and when wrapping I always pass the original exception as the cause."
+
+**🔑 Memory hook:** *"Checked = the mandatory field on the bank form. Unchecked = your own mistake. Error = the building's on fire. finally = switch off the lights on the way out."*
+
+**🗣️ Say it aloud (no peeking):**
+1. Checked vs unchecked, with one example each.
+2. What does try-with-resources do if both the body and close() throw?
+3. Why should a failed debit throw an unchecked exception in a Spring service?

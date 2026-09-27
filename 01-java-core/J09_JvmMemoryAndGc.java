@@ -7,15 +7,20 @@ import java.util.List;
 /*
  * J09  JVM memory (stack, heap, metaspace), GC, StackOverflowError vs OutOfMemoryError
  *
- * Read J09_JvmMemoryAndGc.md first. This file runs the same steps so you can
- * see them happen. The step numbers match the .md file.
+ * WHAT YOU WILL SEE (the numbers match J09_JvmMemoryAndGc.md)
+ *   Step 1  the stack: 3 frames [validate, processPayment, main] while validate runs
+ *   Step 2  the heap: max heap is about RAM / 4; Java passes a COPY of the reference
+ *   Step 3  the real memory areas: Eden, Survivor, Old Gen, Metaspace
+ *   Step 4  GC: young GCs run by themselves; an unreachable object gets collected
+ *   Step 5  StackOverflowError after about 13,000 nested calls
+ *   Step 6  OutOfMemoryError: Java heap space
  *
  * Memory sizes, GC counts and the recursion depth depend on your laptop and
- * JVM, so your numbers will be different. Catching Errors here is ONLY for the
- * demo; never do it in real code.
+ * JVM, so your numbers will differ. Catching Errors here is ONLY for the demo;
+ * never do it in real code.
  *
- * Run it:  java 01-java-core/J09_JvmMemoryAndGc.java
- *          (or click "Run" above main() in VS Code)
+ * HOW TO RUN   java 01-java-core/J09_JvmMemoryAndGc.java   (or click "Run" above main)
+ * READ FIRST   J09_JvmMemoryAndGc.md
  */
 public class J09_JvmMemoryAndGc {
 
@@ -33,9 +38,12 @@ public class J09_JvmMemoryAndGc {
     static int depth;                // how deep the recursion got (Step 5)
 
     public static void main(String[] args) {
+        // Step 1: each method call pushes a frame onto this thread's stack.
         step("Step 1: the stack, one frame per method call");
         processPayment(1500);
+        System.out.println("Notice: when validate() returns, its frame (and its locals) disappear at once.");
 
+        // Step 2: objects live on the heap. Its default maximum is about a quarter of RAM.
         step("Step 2: the heap, where every object lives");
         Runtime runtime = Runtime.getRuntime();
         long ram = ((com.sun.management.OperatingSystemMXBean)
@@ -44,17 +52,21 @@ public class J09_JvmMemoryAndGc {
         System.out.println("max heap (-Xmx)     : " + mb(runtime.maxMemory()) + " MB  (default: about RAM / 4)");
         System.out.println("heap in use now     : " + mb(runtime.totalMemory() - runtime.freeMemory()) + " MB");
 
+        // Pass-by-value: a method gets a COPY of the reference (the arrow), not the object.
         Payment p = new Payment("TXN1001", 1500);
-        changeAmount(p);                              // the method gets a COPY of the reference
+        changeAmount(p);                              // follows the copied arrow to the SAME object
         System.out.println("after changeAmount(p) : amount = " + p.amount + "  (same object, field changed)");
-        replacePayment(p);                            // reassigning the copy doesn't touch our p
+        replacePayment(p);                            // moving the copied arrow doesn't touch our p
         System.out.println("after replacePayment(p): txnId = " + p.txnId + " (our variable still points to the old object)");
+        System.out.println("Notice: Java is always pass-by-value; for objects, the value copied is the reference.");
 
+        // Step 3: the JVM's real memory areas, straight from the JVM.
         step("Step 3: metaspace, and the heap's young and old areas");
         for (MemoryPoolMXBean pool : ManagementFactory.getMemoryPoolMXBeans()) {
             System.out.printf("  %-32s %5d MB used%n", pool.getName(), mb(pool.getUsage().getUsed()));
         }
 
+        // Step 4: make lots of short-lived garbage and watch young GCs happen by themselves.
         step("Step 4: garbage collection");
         long youngBefore = youngGcCount();
         for (int i = 0; i < 5_000_000; i++) {
@@ -63,13 +75,17 @@ public class J09_JvmMemoryAndGc {
         System.out.println("created about 700 MB of short-lived garbage");
         System.out.println("young GCs that ran meanwhile: " + (youngGcCount() - youngBefore) + " (nobody called them)");
 
+        // An object with no normal reference left is garbage. A WeakReference lets us
+        // watch it without keeping it alive.
         Payment payment = new Payment("TXN2002", 800);
-        WeakReference<Payment> watcher = new WeakReference<>(payment);   // watches without keeping it alive
+        WeakReference<Payment> watcher = new WeakReference<>(payment);
         System.out.println("before: payment is " + (watcher.get() != null ? "alive" : "collected"));
         payment = null;                               // no normal reference left, so it's garbage now
         System.gc();                                  // only a REQUEST to run the GC
         System.out.println("after payment = null and System.gc(): " + (watcher.get() != null ? "still alive" : "collected"));
+        System.out.println("Notice: unreachable = collectable. Most objects die young, so young GCs are cheap.");
 
+        // Step 5: recursion with no stopping condition fills the thread's stack.
         step("Step 5: StackOverflowError");
         try {
             callMyselfForever();
@@ -77,6 +93,7 @@ public class J09_JvmMemoryAndGc {
             System.out.println("StackOverflowError after " + depth + " nested calls (the thread's stack was full)");
         }
 
+        // Step 6: ask for an array twice the size of the whole heap.
         step("Step 6: OutOfMemoryError");
         long maxHeap = runtime.maxMemory();
         long longsNeeded = maxHeap / 8 * 2;           // an array of longs twice the size of the whole heap
@@ -91,6 +108,7 @@ public class J09_JvmMemoryAndGc {
                         + " (asked for " + mb(longsNeeded * 8) + " MB, max heap is " + mb(maxHeap) + " MB)");
             }
         }
+        System.out.println("Notice: in real apps OOM usually means a LEAK: objects still referenced but not needed.");
     }
 
     // -------------------------------------------------------------------------

@@ -3,27 +3,36 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 /*
- * J07  Exceptions: checked vs unchecked, finally, try-with-resources, custom: runnable demo
+ * J07  Exceptions: checked vs unchecked, finally, try-with-resources, custom: a runnable demo
  *
- * Read J07_Exceptions.md first. This file runs the same steps so you can see
- * them happen. The step numbers match the .md file.
+ * WHAT YOU WILL SEE (the numbers match J07_Exceptions.md)
+ *   Step 2  a CHECKED exception (IOException) that the compiler forced us to handle
+ *   Step 3  UNCHECKED exceptions from bugs: / by zero, a null, "12a" as a number
+ *   Step 4  try -> catch -> finally, and the trap: a return in finally wins (2, not 1)
+ *   Step 5  try-with-resources closes in REVERSE order, and keeps close() errors as "suppressed"
+ *   Step 6  a custom exception: "Balance 1000 is less than 1500", short by Rs 500
+ *   Step 7  wrapping a low-level error with a clear message, keeping the cause
  *
- * Run it:  java 01-java-core/J07_Exceptions.java
- *          (or click "Run" above main() in VS Code)
+ * HOW TO RUN   java 01-java-core/J07_Exceptions.java   (or click "Run" above main)
+ * READ FIRST   J07_Exceptions.md
  */
 public class J07_Exceptions {
 
     static String gatewayName;                    // never set, so it stays null (used in Step 3)
 
     public static void main(String[] args) {
+        // Step 2: IOException is CHECKED: readGatewayConfig() must declare it,
+        // and we must catch it (or declare it too). The compiler insists.
         step("Step 2: a checked exception (the compiler forces you to handle it)");
         try {
-            String config = readGatewayConfig();  // declared "throws IOException", so we must catch or declare
+            String config = readGatewayConfig();
             System.out.println(config);
         } catch (IOException e) {
             System.out.println("caught " + e.getClass().getSimpleName() + ": " + e.getMessage());
         }
 
+        // Step 3: UNCHECKED exceptions are bugs in our own code. The compiler
+        // doesn't force a catch; the real fix is better code.
         step("Step 3: unchecked exceptions (bugs in our own code)");
         try {
             // Dividing by zero on purpose. javac even warns about it with -Xlint:
@@ -43,7 +52,9 @@ public class J07_Exceptions {
         } catch (NumberFormatException e) {
             System.out.println("NumberFormatException: " + e.getMessage());
         }
+        System.out.println("Notice: Java 14+ even tells you WHICH variable was null.");
 
+        // Step 4: the order is try -> catch -> finally. finally runs every time.
         step("Step 4: try, catch, finally");
         try {
             System.out.println("try     : debit Rs 1500 from a balance of Rs 1000");
@@ -55,7 +66,9 @@ public class J07_Exceptions {
             System.out.println("finally : always runs (close the payment log here)");
         }
         System.out.println("return in try (1) and in finally (2) -> method returns " + returnTrap());
+        System.out.println("Notice: a return inside finally replaces the try's return. Never do it.");
 
+        // Step 5: try-with-resources closes everything automatically, last-opened first.
         step("Step 5: try-with-resources closes things for you");
         try (DbConnection db = new DbConnection();          // opened first
              AuditLog log = new AuditLog(false)) {           // opened second
@@ -72,7 +85,9 @@ public class J07_Exceptions {
                 System.out.println("  suppressed: " + s.getMessage());
             }
         }
+        System.out.println("Notice: closed in reverse order, and the close() error rode along as 'suppressed'.");
 
+        // Step 6: our own exception, with a clear message and useful fields.
         step("Step 6: a custom exception");
         try {
             debit(1000, 1500);
@@ -81,6 +96,7 @@ public class J07_Exceptions {
             System.out.println("short by Rs " + (e.amount - e.balance));
         }
 
+        // Step 7: wrap a low-level error in our own exception, but PASS THE CAUSE.
         step("Step 7: wrap it, but keep the cause");
         try {
             loadGatewayOrFail();
@@ -88,6 +104,7 @@ public class J07_Exceptions {
             System.out.println("message : " + e.getMessage());
             System.out.println("cause   : " + e.getCause().getClass().getSimpleName() + ": " + e.getCause().getMessage());
         }
+        System.out.println("Notice: the caller sees a clear message, and the logs still show the real reason.");
     }
 
     // -------------------------------------------------------------------------

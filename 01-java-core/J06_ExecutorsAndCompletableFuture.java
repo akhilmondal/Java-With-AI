@@ -11,16 +11,22 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 /*
- * J06  ExecutorService, Future, CompletableFuture: runnable demo
+ * J06  ExecutorService, Future, CompletableFuture: a runnable demo
  *
- * Read J06_ExecutorsAndCompletableFuture.md first. This file runs the same
- * steps so you can see them happen. The step numbers match the .md file.
+ * WHAT YOU WILL SEE (the numbers match J06_ExecutorsAndCompletableFuture.md)
+ *   Step 1  3 biller calls one after another: about 900 ms (3 x 300)
+ *   Step 2  a pool of 3 threads: about 300 ms; a pool of 2: about 600 ms
+ *   Step 3  Future.get(200 ms) on a 1-second call: TimeoutException
+ *   Step 4  CompletableFuture: chain (1200 + 10 = 1210), combine, allOf (Rs 1950 in ~300 ms)
+ *   Step 5  exceptionally() when a biller is down; completeOnTimeout() when it's slow
+ *   Step 6  thenCompose for a next step that is itself async: PAY-WATER-450
+ *   Step 7  shutdown() so the pool's threads don't keep the program alive
  *
- * Every biller call "takes" 300 ms (we sleep to pretend it's an HTTP call).
- * Times are measured, so yours will be a few ms different.
+ * Every biller call "takes" 300 ms (we sleep to pretend it's an HTTP call), so
+ * your times will be a few ms different.
  *
- * Run it:  java 01-java-core/J06_ExecutorsAndCompletableFuture.java
- *          (or click "Run" above main() in VS Code)
+ * HOW TO RUN   java 01-java-core/J06_ExecutorsAndCompletableFuture.java   (or click "Run" above main)
+ * READ FIRST   J06_ExecutorsAndCompletableFuture.md
  */
 public class J06_ExecutorsAndCompletableFuture {
 
@@ -28,6 +34,7 @@ public class J06_ExecutorsAndCompletableFuture {
     static final List<String> BILLERS = List.of("ELECTRICITY", "WATER", "GAS");
 
     public static void main(String[] args) throws Exception {
+        // Step 1: the slow way. Each call waits for the previous one.
         step("Step 1: one after another");
         long start = System.nanoTime();
         int total = 0;
@@ -36,10 +43,13 @@ public class J06_ExecutorsAndCompletableFuture {
         }
         System.out.println("total Rs " + total + " in " + msSince(start) + " ms (3 x 300 = 900)");
 
+        // Step 2: a pool runs the calls at the same time. Rounds = calls / threads.
         step("Step 2: a thread pool runs them at the same time");
         System.out.println("3 threads: " + fetchAllWithPool(3));  // all three at once: ~300 ms
         System.out.println("2 threads: " + fetchAllWithPool(2));  // two, then one: ~600 ms
+        System.out.println("Notice: 2 threads = 2 rounds (2 calls, then 1) = 600 ms.");
 
+        // Step 3: a Future is a token for a result. get() waits; get(timeout) gives up.
         step("Step 3: Future.get() waits; get(timeout) gives up");
         ExecutorService pool = Executors.newFixedThreadPool(3);
         Future<Integer> slow = pool.submit(() -> fetchSlowBill());   // takes 1,000 ms
@@ -50,22 +60,23 @@ public class J06_ExecutorsAndCompletableFuture {
             slow.cancel(true);                           // and stop the task too
         }
 
+        // Step 4: CompletableFuture chains steps without anyone blocking in the middle.
         step("Step 4: CompletableFuture, chain, combine, all");
-        // 4a. start, transform, use. Nobody blocks in the middle.
+        // 4a. start, transform, use.
         CompletableFuture
                 .supplyAsync(() -> fetchBill("ELECTRICITY"), pool)   // runs in the pool: 1200
                 .thenApply(amount -> amount + 10)                     // add the Rs 10 fee: 1210
                 .thenAccept(amount -> System.out.println("thenApply + thenAccept: pay Rs " + amount))
                 .join();                                              // wait here only so the demo prints in order
 
-        // 4b. two calls at the same time, then combine the two answers
+        // 4b. two calls at the same time, then combine the two answers.
         start = System.nanoTime();
         CompletableFuture<Integer> bill = CompletableFuture.supplyAsync(() -> fetchBill("ELECTRICITY"), pool);
         CompletableFuture<Integer> fee = CompletableFuture.supplyAsync(() -> fetchFee(), pool);
         int billPlusFee = bill.thenCombine(fee, Integer::sum).join();  // 1200 + 10
         System.out.println("thenCombine: Rs " + billPlusFee + " in " + msSince(start) + " ms (both ran together)");
 
-        // 4c. all three billers, then one total
+        // 4c. all three billers, then one total.
         start = System.nanoTime();
         List<CompletableFuture<Integer>> calls = new ArrayList<>();
         for (String biller : BILLERS) {
@@ -77,7 +88,9 @@ public class J06_ExecutorsAndCompletableFuture {
             sum += call.join();                          // already finished, so no waiting here
         }
         System.out.println("allOf: total Rs " + sum + " in " + msSince(start) + " ms");
+        System.out.println("Notice: three 300 ms calls finished in about 300 ms, not 900.");
 
+        // Step 5: real systems fail and stall. Give a fallback and a time limit.
         step("Step 5: errors and timeouts");
         int gasBill = CompletableFuture
                 .supplyAsync(() -> fetchBillFromDownBiller("GAS"), pool)
@@ -95,6 +108,7 @@ public class J06_ExecutorsAndCompletableFuture {
                 .join();
         System.out.println("completeOnTimeout: Rs " + slowBill + " (gave up after 400 ms)");
 
+        // Step 6: when the next step returns a CompletableFuture itself, use thenCompose.
         step("Step 6: thenApply vs thenCompose");
         // thenApply(amount -> payAsync(...)) would give CompletableFuture<CompletableFuture<String>>.
         // thenCompose flattens it, because the next step is itself async.
@@ -104,6 +118,7 @@ public class J06_ExecutorsAndCompletableFuture {
                 .join();
         System.out.println("thenCompose: " + paymentId);
 
+        // Step 7: always shut the pool down, or its threads keep the program running.
         step("Step 7: shutdown");
         pool.shutdown();                                 // no new tasks; let running ones finish
         boolean finished = pool.awaitTermination(5, TimeUnit.SECONDS);

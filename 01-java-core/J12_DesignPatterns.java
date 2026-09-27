@@ -3,17 +3,22 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /*
- * J12  Design patterns: Singleton, Builder, Factory, Strategy (+ Proxy): runnable demo
+ * J12  Design patterns: Singleton, Builder, Factory, Strategy (+ Proxy): a runnable demo
  *
- * Read J12_DesignPatterns.md first. This file runs the same steps so you can
- * see them happen. The step numbers match the .md file.
+ * WHAT YOU WILL SEE (the numbers match J12_DesignPatterns.md)
+ *   Step 1  Singleton: a lazy version with no locking creates 2 instances; the safe ones create 1
+ *   Step 2  Builder: required fields first, optional ones by name, build() validates
+ *   Step 3  Factory: ask for "SETU", get a SetuGateway; "STRIPE" is refused
+ *   Step 4  Strategy: the same Rs 1000, three fee rules: 1000, 1020, 1010
+ *   Step 5  Proxy: "begin transaction" and "commit" wrap the real pay(), like @Transactional
  *
- * Run it:  java 01-java-core/J12_DesignPatterns.java
- *          (or click "Run" above main() in VS Code)
+ * HOW TO RUN   java 01-java-core/J12_DesignPatterns.java   (or click "Run" above main)
+ * READ FIRST   J12_DesignPatterns.md
  */
 public class J12_DesignPatterns {
 
     public static void main(String[] args) throws InterruptedException {
+        // Step 1: two threads call getInstance() at the same moment, four ways.
         step("Step 1: Singleton, two threads call getInstance() at the same time");
         runTogether(LazyUnsafeConfig::getInstance, LazyUnsafeConfig::getInstance);
         System.out.println("lazy, no locking      : created " + LazyUnsafeConfig.created.get() + " instances  <- WRONG");
@@ -25,7 +30,9 @@ public class J12_DesignPatterns {
         EnumConfig second = EnumConfig.INSTANCE;
         System.out.println("enum                  : same object? " + (first == second)   // ...still one object
                 + ", url = " + first.gatewayUrl());
+        System.out.println("Notice: in Spring you rarely write this; every bean is a singleton by default.");
 
+        // Step 2: a builder turns a long, confusing constructor into named steps.
         step("Step 2: Builder");
         PaymentRequest request = PaymentRequest.builder("TXN1001", 1500)   // required fields first
                 .gateway("SETU")                                            // optional fields by name
@@ -38,8 +45,9 @@ public class J12_DesignPatterns {
             System.out.println("build() refused: " + e.getMessage());
         }
 
+        // Step 3: one place decides which class to create; callers never write "new".
         step("Step 3: Factory");
-        PaymentGateway gateway = PaymentGatewayFactory.get("SETU");        // the caller never writes "new"
+        PaymentGateway gateway = PaymentGatewayFactory.get("SETU");
         System.out.println("factory gave " + gateway.getClass().getSimpleName() + " -> " + gateway.pay(1500));
         try {
             PaymentGatewayFactory.get("STRIPE");
@@ -47,6 +55,7 @@ public class J12_DesignPatterns {
             System.out.println("factory refused: " + e.getMessage());
         }
 
+        // Step 4: the same job (a fee on Rs 1000), a different rule picked at runtime.
         step("Step 4: Strategy, same payment, fee rule chosen at runtime");
         for (String mode : List.of("UPI", "CARD", "NETBANKING")) {
             FeeStrategy strategy = feeStrategyFor(mode);
@@ -54,6 +63,7 @@ public class J12_DesignPatterns {
             System.out.println(mode + ": fee Rs " + fee + ", total Rs " + (1000 + fee));
         }
 
+        // Step 5: a proxy stands in front of the real object and adds work around each call.
         step("Step 5: Proxy, how Spring's @Transactional wraps your method");
         PaymentGateway real = new PayUGateway();
         PaymentGateway proxy = (PaymentGateway) Proxy.newProxyInstance(
@@ -66,6 +76,7 @@ public class J12_DesignPatterns {
                     return result;
                 });
         System.out.println("  result: " + proxy.pay(1500));
+        System.out.println("Notice: calling pay() on 'this' inside the real class would skip the proxy.");
     }
 
     // =========================================================================

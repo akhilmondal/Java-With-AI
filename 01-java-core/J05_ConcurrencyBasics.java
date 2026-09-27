@@ -6,48 +6,63 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /*
- * J05  synchronized, volatile, atomics, ConcurrentHashMap: runnable demo
+ * J05  synchronized, volatile, atomics, ConcurrentHashMap: a runnable demo
  *
- * Read J05_ConcurrencyBasics.md first. This file runs the same steps so you
- * can see them happen. The step numbers match the .md file.
+ * WHAT YOU WILL SEE (the numbers match J05_ConcurrencyBasics.md)
+ *   Step 1  2 threads x 100,000 count++ on a plain int: far less than 200,000
+ *   Step 2  synchronized: exactly 200,000
+ *   Step 3  volatile int: still wrong; but a volatile stop flag works and a plain one doesn't
+ *   Step 4  AtomicInteger (compare-and-set): exactly 200,000
+ *   Step 5  HashMap loses entries with 2 threads; synchronizedMap and ConcurrentHashMap don't
+ *   Step 6  get-then-put on a ConcurrentHashMap still loses updates; merge() doesn't
  *
  * Numbers marked "changes every run" come from a real race between threads,
- * so your numbers will be different. The point is that they are WRONG.
+ * so yours will be different. The point is that they are WRONG.
  *
- * Run it:  java 01-java-core/J05_ConcurrencyBasics.java
- *          (or click "Run" above main() in VS Code)
+ * HOW TO RUN   java 01-java-core/J05_ConcurrencyBasics.java   (or click "Run" above main)
+ * READ FIRST   J05_ConcurrencyBasics.md
  */
 public class J05_ConcurrencyBasics {
 
     static final int TIMES = 100_000;            // each thread records 100,000 payments
 
     public static void main(String[] args) throws InterruptedException {
+        // Step 1: count++ is really three steps (read, add, write). Two threads
+        // mix those steps up and overwrite each other's updates.
         step("Step 1: the race condition (count++ is read, add, write)");
         PlainCounter plain = new PlainCounter();
         runTogether(plain::add, plain::add);
         System.out.println("plain int    : " + plain.value + " (expected 200000, changes every run)");
+        System.out.println("Notice: updates were lost. Nobody got an error; the number is just wrong.");
 
+        // Step 2: synchronized lets only ONE thread into increment() at a time.
         step("Step 2: synchronized, one thread at a time");
         SyncCounter sync = new SyncCounter();
         runTogether(sync::add, sync::add);
         System.out.println("synchronized : " + sync.value + " (expected 200000)");
 
+        // Step 3: volatile makes every read see the latest value, but read-add-write
+        // can still interleave. It fixes the stop flag, not the counter.
         step("Step 3: volatile, visibility but NOT atomic");
         VolatileCounter vol = new VolatileCounter();
         runTogether(vol::add, vol::add);
         System.out.println("volatile int : " + vol.value + " (expected 200000, still wrong)");
         stopFlagDemo();
+        System.out.println("Notice: volatile fixed the flag (visibility) but not the counter (atomicity).");
 
+        // Step 4: AtomicInteger uses the CPU's compare-and-set: "write 6 only if it's
+        // still 5; otherwise read again and retry". Nothing is lost, and no lock is taken.
         step("Step 4: AtomicInteger, compare-and-set");
         AtomicInteger atomic = new AtomicInteger();
         Runnable addAtomic = () -> {
             for (int i = 0; i < TIMES; i++) {
-                atomic.incrementAndGet();          // "write 6 only if it's still 5, else re-read and retry"
+                atomic.incrementAndGet();
             }
         };
         runTogether(addAtomic, addAtomic);
         System.out.println("AtomicInteger: " + atomic.get() + " (expected 200000)");
 
+        // Step 5: two threads put 50,000 DIFFERENT keys each into the same map.
         step("Step 5: three maps, two threads, 100,000 different keys");
         System.out.println("HashMap              : " + fillFromTwoThreads(new HashMap<>())
                 + " (expected 100000)");
@@ -55,13 +70,15 @@ public class J05_ConcurrencyBasics {
                 + " (expected 100000)");
         System.out.println("ConcurrentHashMap    : " + fillFromTwoThreads(new ConcurrentHashMap<>())
                 + " (expected 100000)");
+        System.out.println("Notice: both safe maps are correct; ConcurrentHashMap just makes threads wait less.");
 
+        // Step 6: each map call is safe, but "get, then put" is TWO calls, and
+        // another thread can sneak in between them.
         step("Step 6: a thread-safe map does NOT make get-then-put safe");
         Map<String, Integer> statusCount = new ConcurrentHashMap<>();
         statusCount.put("SUCCESS", 0);
         Runnable getThenPut = () -> {
             for (int i = 0; i < 50_000; i++) {
-                // Two separate steps: another thread can sneak in between get and put.
                 statusCount.put("SUCCESS", statusCount.get("SUCCESS") + 1);
             }
         };
@@ -76,6 +93,7 @@ public class J05_ConcurrencyBasics {
         };
         runTogether(merge, merge);
         System.out.println("merge        : " + statusCount.get("SUCCESS") + " (expected 100000)");
+        System.out.println("Notice: use one-step methods (merge, compute, putIfAbsent) for check-then-act.");
     }
 
     // -------------------------------------------------------------------------

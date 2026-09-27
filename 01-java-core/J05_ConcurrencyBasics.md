@@ -1,239 +1,336 @@
 # J05 · synchronized, volatile, and ConcurrentHashMap vs synchronizedMap
 
-**Read this first (12 min). Then run [J05_ConcurrencyBasics.java](J05_ConcurrencyBasics.java) to watch each step happen.**
+> **In one line:** When two threads change the same data, updates get **silently lost**. `synchronized` lets one thread in at a time. `volatile` only makes the **latest value visible**. `AtomicInteger` does safe counting without locks. `ConcurrentHashMap` is a thread-safe map that locks **one bucket**, not the whole map.
 
-Don't memorize sentences. Understand the 6 steps and the example: **two threads each record 100,000 payments into one shared counter**, so the right answer is **200,000**. Once you get that, you can explain thread safety in your own words.
+| ⏱️ Read | 🧪 Run | 🎯 Asked |
+|---|---|---|
+| 12 min | `java 01-java-core/J05_ConcurrencyBasics.java` | Every backend round. Payments interviews love "two requests debit at the same time" |
 
 ---
 
-## The problem
+## 🧩 Words you need
 
-In your payment system, many threads run at the same time: web requests, RabbitMQ consumers, scheduled jobs. When two threads change the **same data** at the same moment, updates get lost. There's no error. The numbers are just wrong.
-
-Java gives you tools against this: `synchronized`, `volatile`, atomic classes and concurrent collections. Interviewers want to know what each one really guarantees.
-
-## Real-life picture: one ledger, many cashiers
-
-- **A race condition:** two cashiers update the same ledger. Both read "5 payments", both write "6", and one payment is lost.
-- **synchronized:** the ledger sits in a room with **one key**. Only the cashier holding the key can go in. The others wait at the door.
-- **volatile:** everyone reads the **live notice board**, never an old copy in their own diary. They always see the latest value, but "read, add 1, write" is still three separate steps.
-- **AtomicInteger:** "write 6 only if it still says 5. If someone changed it, read again and retry."
-- **synchronizedMap:** a bank branch with **one counter** for everything. Even a balance enquiry waits in the same queue.
-- **ConcurrentHashMap:** a branch with **many counters**, one per section (bucket). Customers at different counters are served at the same time, and reading the display board needs no queue at all.
-
-| Real life | Java |
+| Word | In one line |
 |---|---|
-| two cashiers overwriting each other | a race condition (`count++`) |
+| **race condition** | two threads change shared data at the same time, and the result depends on luck |
+| **atomic** | done as **one** step that can't be split or interrupted |
+| **visibility** | whether one thread can **see** another thread's latest write |
+| **lock** | a key only one thread can hold; the others wait |
+| **CAS (compare-and-set)** | a CPU instruction meaning "write the new value only if the old one is still what I read" |
+
+---
+
+## 🖼️ Picture it: one ledger, two cashiers
+
+Two cashiers update the same ledger. Both read "5 payments", both write "6", and one payment is gone. Nobody made an error; they just overlapped.
+
+```mermaid
+sequenceDiagram
+    participant A as Thread A
+    participant C as count (starts at 5)
+    participant B as Thread B
+    A->>C: read 5
+    B->>C: read 5
+    A->>C: write 5 + 1 = 6
+    B->>C: write 5 + 1 = 6
+    Note over C: count is 6, but should be 7.<br/>One update is lost.
+```
+
+👀 **Notice:** `count++` looks like one step but is **three**: read, add, write. The damage happens when two threads' steps interleave.
+
+| Bank | Java |
+|---|---|
+| two cashiers overwriting each other | a race condition |
 | a room with one key | `synchronized` |
-| the live notice board | `volatile` |
-| "write only if it still says 5, else retry" | `AtomicInteger` (compare-and-set) |
-| one counter for everything | `Collections.synchronizedMap` |
+| the live notice board (no private diary copies) | `volatile` |
+| "write only if it still says 5, else re-read" | `AtomicInteger` (CAS) |
+| one counter for every customer | `Collections.synchronizedMap` |
 | many counters, one per section | `ConcurrentHashMap` |
 
 ---
 
-## Step by step
+## 🔬 How it works, step by step
 
-### Step 1 · The race condition: `count++` is three steps
+The running example: **two threads each record 100,000 payments into one counter**, so the right answer is **200,000**.
 
-`count++` looks like one step, but the CPU does three: **read** the value, **add 1**, **write** it back. Two threads can mix those steps up:
+### Step 1 · The race: a plain `int`
 
-```text
-count = 5
-Thread A: read 5
-Thread B: read 5          <- B reads before A has written
-Thread A: write 6
-Thread B: write 6         <- B overwrites A's update
-count = 6, but it should be 7. One payment is lost.
-```
+This laptop printed **118,516**, **134,310** and **139,589** on different runs. The number changes every run, and it's always wrong. No exception is thrown, which is what makes this dangerous in production.
 
-In the demo, two threads each do `count++` 100,000 times on a plain `int`. On this laptop, three runs gave **135,300**, **118,516** and **139,589** instead of 200,000. Your numbers will be different every run, but they'll be wrong.
-
-### Step 2 · synchronized: one thread at a time
+### Step 2 · `synchronized`: one thread at a time
 
 ```java
-synchronized void increment() {
-    value++;               // only one thread can be inside at a time
-}
+synchronized void increment() { value++; }     // only one thread can be inside
 ```
 
-`synchronized` gives two guarantees:
-1. **Mutual exclusion:** only one thread holds the lock, so read-add-write finishes before the next thread starts.
-2. **Visibility:** when a thread leaves, its changes are visible to the next thread that takes the lock.
-
-Result: **200,000** every time.
-
-### Step 3 · volatile: always see the latest value, but still not atomic
-
-Each CPU core can keep its own cached copy of a variable. Without `volatile`, one thread may never see another thread's change.
-
-**The demo's stop flag:** a worker loops `while (!stop)`, and the main thread sets `stop = true` after half a second.
-- Without volatile: the worker was **still running 1 second later**. It never saw the change, in all three runs.
-- With `volatile boolean stop`: the worker **stopped** right away.
-
-But volatile does **not** make `count++` safe. It only guarantees that you read the latest value; the three steps can still mix. The demo's `volatile int` counter got **171,978**, **138,466** and **132,514** instead of 200,000.
-
-> **volatile = visibility. synchronized = visibility + one-at-a-time.**
-> Use volatile for a flag that one thread writes and others read. Don't use it for counters.
-
-### Step 4 · AtomicInteger: compare-and-set
-
-`atomic.incrementAndGet()` doesn't take a lock. It uses the CPU's **compare-and-set** instruction:
-
-```text
-count = 5
-Thread A: read 5, then "set 6 if it's still 5"  -> yes, now 6
-Thread B: read 5, then "set 6 if it's still 5"  -> NO, it's 6 now
-Thread B: read 6 again, then "set 7 if it's still 6" -> yes, now 7
+```mermaid
+sequenceDiagram
+    participant A as Thread A
+    participant L as increment() (locked)
+    participant B as Thread B
+    A->>L: enters, takes the lock
+    B--xL: waits outside
+    A->>L: read 5, write 6, leaves
+    B->>L: enters, reads 6, writes 7
 ```
 
-Nothing is lost. Result: **200,000** every time. This is the best fit for counters.
+`synchronized` gives **two** guarantees:
+1. **Mutual exclusion:** one thread at a time.
+2. **Visibility:** the next thread sees the changes.
 
-### Step 5 · Three maps, two threads
+Result: **200,000**, every time.
 
-The demo has two threads put **50,000 different keys each** into the same map, so the right size is **100,000**:
+### Step 3 · `volatile`: visibility, but NOT atomic
 
-| Map | Size (three runs on this laptop) | Why |
+Each CPU core can keep a **cached copy** of a variable. Without `volatile`, a thread may keep reading its stale copy forever.
+
+```mermaid
+flowchart LR
+    subgraph core1["CPU core 1: worker thread"]
+        W["cached copy<br/>stop = false"]
+    end
+    subgraph core2["CPU core 2: main thread"]
+        M2["sets stop = true"]
+    end
+    MEM[("main memory<br/>stop = true")]
+    M2 -->|"writes"| MEM
+    MEM -.->|"without volatile, the worker<br/>may never re-read this"| W
+```
+
+**The demo's stop flag:** a worker loops `while (!stop)`, and the main thread sets `stop = true`.
+- Without volatile, the worker was **still running 1 second later**, in every run.
+- With `volatile boolean stop`, it **stopped** at once.
+
+**But volatile does NOT fix `count++`.** You read the latest value, but read-add-write can still interleave. The volatile counter printed **132,514** to **171,978** (and 150,072), which is still wrong.
+
+🧠 **volatile = visibility. synchronized = visibility + one-at-a-time.** Use volatile for a flag one thread writes and others read, not for counters.
+
+### Step 4 · `AtomicInteger`: compare-and-set, no lock
+
+```mermaid
+sequenceDiagram
+    participant A as Thread A
+    participant C as count
+    participant B as Thread B
+    A->>C: read 5, then "set 6 if still 5"
+    Note over C: yes, now 6
+    B->>C: read 5, then "set 6 if still 5"
+    Note over C: NO, it's 6. B retries
+    B->>C: read 6, then "set 7 if still 6"
+    Note over C: yes, now 7. Nothing is lost
+```
+
+Result: **200,000**, every time, with no thread ever blocked. This is the best fit for counters.
+
+### Step 5 · Maps under two threads
+
+Two threads each put **50,000 different keys**, so the right size is **100,000**:
+
+| Map | Size in the demo | Why |
 |---|---|---|
-| `HashMap` | 79,155 · 83,250 · 79,879 ❌ | not thread-safe: entries get lost when both threads write or resize at once |
-| `Collections.synchronizedMap` | 100,000 ✅ | every method holds **one lock for the whole map** |
-| `ConcurrentHashMap` | 100,000 ✅ | locks only the **bucket** being written; reads don't lock |
+| `HashMap` | 79,155 · 83,250 · 88,764 ❌ | not thread-safe: entries get lost during concurrent writes and resizes |
+| `Collections.synchronizedMap` | 100,000 ✅ | **one lock** for the whole map |
+| `ConcurrentHashMap` | 100,000 ✅ | locks **only the bucket** being written; reads don't lock |
 
-synchronizedMap and ConcurrentHashMap are both correct. The difference is **how much waiting** they cause:
-- **synchronizedMap:** a thread writing to bucket 3 blocks a thread that only wants to read bucket 9, because there's just one lock.
-- **ConcurrentHashMap (Java 8+):** an empty bucket is filled with compare-and-set (no lock). A busy bucket is locked on its own. Reads never lock. So many threads work at the same time.
+```mermaid
+flowchart LR
+    subgraph SM["synchronizedMap: one lock"]
+        L1["one lock"] --- all["all 16 buckets"]
+    end
+    subgraph CHM["ConcurrentHashMap: a lock per bucket"]
+        b3["bucket 3 (locked by thread A)"]
+        b9["bucket 9 (thread B writes freely)"]
+        r["readers: no lock at all"]
+    end
+```
+
+👀 **Notice:** both are **correct**. The difference is **waiting**. With synchronizedMap, a writer on bucket 3 blocks a reader of bucket 9. With ConcurrentHashMap, they run at the same time.
 
 ### Step 6 · A thread-safe map does NOT make your logic thread-safe
 
 ```java
-map.put("SUCCESS", map.get("SUCCESS") + 1);     // two separate calls
+map.put("SUCCESS", map.get("SUCCESS") + 1);   // two calls: another thread can run in between
 ```
 
-Each call is safe on its own, but another thread can run between the `get` and the `put`. That's the same lost update as Step 1. With two threads adding 50,000 each on a ConcurrentHashMap, the demo got about **52,000** instead of 100,000.
-
-The fix is one atomic call:
+Even on a ConcurrentHashMap, this gave about **52,000** instead of 100,000, the same lost update as Step 1. The fix is **one atomic call**:
 
 ```java
-map.merge("SUCCESS", 1, Integer::sum);           // "add 1 to whatever is there", as one step
+map.merge("SUCCESS", 1, Integer::sum);        // "add 1 to whatever is there", in one step: 100,000
 ```
 
-Result: **100,000**. Other atomic "check and act" calls are `putIfAbsent`, `computeIfAbsent` and `compute`.
+Other one-step "check then act" methods are `putIfAbsent`, `computeIfAbsent` and `compute`.
 
-> **Thread-safe methods don't make a sequence of calls safe. Use the one-step methods.**
-
-### The whole topic in one table
-
-| Tool | One at a time? | Always sees the latest value? | Use it for |
+| Tool | One at a time? | Sees the latest value? | Use it for |
 |---|---|---|---|
-| `synchronized` | yes | yes | a block of code that must not mix |
-| `volatile` | **no** | yes | a flag one thread writes and others read |
-| `AtomicInteger` / `AtomicLong` | yes, for one variable (compare-and-set) | yes | counters, IDs |
-| `synchronizedMap` | yes, one lock for the whole map | yes | rarely; low traffic only |
-| `ConcurrentHashMap` | a lock per bucket, reads without a lock | yes | shared maps: caches, counters with `merge` |
+| `synchronized` | ✅ | ✅ | a block of code that must not interleave |
+| `volatile` | ❌ | ✅ | a flag written by one thread |
+| `AtomicInteger` / `AtomicLong` | ✅ for one variable (CAS) | ✅ | counters, IDs |
+| `synchronizedMap` | ✅ one lock for everything | ✅ | rarely, low traffic |
+| `ConcurrentHashMap` | a lock per bucket, lock-free reads | ✅ | shared maps: caches, counters with `merge` |
 
 ---
 
-## How to explain it in the interview
+## 💻 Code you should be able to write
 
-Use your own words. Cover these points in this order, using the shared payment counter:
+```java
+// A thread-safe counter, three ways
+synchronized void increment() { count++; }          // lock
+AtomicInteger count = new AtomicInteger();          // CAS, no lock: count.incrementAndGet()
+map.merge(status, 1, Integer::sum);                 // per-key counter in a ConcurrentHashMap
 
-1. `count++` is read, add, write. Two threads can interleave these steps and lose updates. That's a **race condition**.
-2. **synchronized** lets one thread at a time into the block, and makes its changes visible to the next thread.
-3. **volatile** only guarantees visibility: every read sees the latest write. It doesn't make `count++` atomic. It's good for flags, not counters. For counters, use **AtomicInteger** (compare-and-set) or synchronized.
-4. **HashMap** isn't thread-safe. **synchronizedMap** uses one lock for everything. **ConcurrentHashMap** locks per bucket and reads without locks, so it scales much better. It doesn't allow nulls.
-5. Even on a ConcurrentHashMap, **get-then-put is not atomic**. Use `merge`, `compute` or `putIfAbsent`.
+// A stop flag
+private volatile boolean running = true;            // one thread writes it, others read it
 
-**Here's how it can sound** (about a minute, simple words):
+// Duplicate-callback guard: only the FIRST thread gets null back
+if (processed.putIfAbsent(txnId, Boolean.TRUE) == null) {
+    process(txnId);
+}
+```
 
-> "count++ is actually three steps, read, add and write, so two threads can both read 5 and both write 6, and one update is lost. synchronized fixes that by letting only one thread into the block at a time, and it also makes the changes visible to the next thread. volatile only solves visibility: a thread always sees the latest value, so it's good for something like a stop flag, but it doesn't make count++ atomic. For counters I'd use AtomicInteger, which uses compare-and-set. For maps, HashMap isn't thread-safe. Collections.synchronizedMap is safe but uses one lock for the whole map. ConcurrentHashMap locks only the bucket being updated and doesn't lock for reads, so it performs much better under load. One catch: even with ConcurrentHashMap, doing get and then put isn't atomic, so I use merge or computeIfAbsent for things like counting payment statuses."
+**What the demo prints** (from a real run):
 
-**Tip:** draw the "read 5, read 5, write 6, write 6" timeline. It makes the race obvious in five seconds.
+```text
+plain int    : 134310 (expected 200000, changes every run)
+synchronized : 200000 (expected 200000)
+volatile int : 150072 (expected 200000, still wrong)
+stop flag without volatile: still running 1 second later (never saw stop = true)
+stop flag with volatile   : stopped
+AtomicInteger: 200000 (expected 200000)
+```
 
 ---
 
-## Follow-up questions (simple answers)
+## ⚠️ Traps interviewers love
 
-**Why doesn't ConcurrentHashMap allow null keys or values?**
-If `get(key)` returns null, you couldn't tell "not there" from "stored null". In a multi-threaded map, you can't safely check with `containsKey` in between, because another thread might change it.
+| Trap | Why it's wrong | Say this instead |
+|---|---|---|
+| "volatile makes count++ safe" | it gives visibility, not atomicity | "AtomicInteger or synchronized for counters" |
+| "ConcurrentHashMap makes my code thread-safe" | each call is safe, but get-then-put is two calls | "Use merge / compute / putIfAbsent" |
+| "synchronizedMap and ConcurrentHashMap are the same" | one lock vs a lock per bucket, and lock-free reads | "Both are correct; CHM scales far better" |
+| Iterating a synchronizedMap without a lock | another thread can change it mid-loop | "Wrap the loop in `synchronized (map) { }`" |
+| A null key or value in ConcurrentHashMap | not allowed, NullPointerException | "Absent vs null would be ambiguous across threads" |
 
-**How did ConcurrentHashMap work in Java 7?**
-It split the map into 16 segments, each with its own lock. Java 8 dropped segments: it locks a single bucket and uses compare-and-set for empty buckets, and long buckets become trees, just like HashMap (J01).
+---
 
-**How do you loop over a synchronizedMap safely?**
-Wrap the loop in `synchronized (map) { ... }`, otherwise another thread can change it mid-loop. ConcurrentHashMap's iterators never throw ConcurrentModificationException. They may or may not show changes made during the loop.
+## 🎯 In the interview
+
+**What they're really testing**
+- *Service companies:* synchronized vs volatile, and why HashMap isn't thread-safe.
+- *Product companies:* **atomicity vs visibility**, CAS, how ConcurrentHashMap achieves concurrency (Java 7 segments vs Java 8 per-bucket locks), compound actions, deadlocks, and designing a safe payment counter or duplicate guard.
+
+**Say it in this order:**
+1. `count++` is read-add-write, so two threads can interleave and lose updates. That's a **race condition**.
+2. **synchronized:** one thread at a time, plus visibility.
+3. **volatile:** only visibility, so it's for flags, not counters. For counters, use **AtomicInteger** (CAS).
+4. **HashMap** isn't safe. **synchronizedMap** uses one lock. **ConcurrentHashMap** locks per bucket and reads without locks, so it scales. No nulls.
+5. Even with ConcurrentHashMap, **get-then-put isn't atomic**, so use `merge`, `compute` or `putIfAbsent`.
+
+**Sample answer** (about a minute, in your own words):
+
+> "count++ is actually three steps: read, add and write. So two threads can both read 5 and both write 6, and one update is lost. synchronized fixes that by letting only one thread into the block at a time, and it also makes the changes visible to the next thread. volatile only solves visibility: a thread always sees the latest value, which is right for a stop flag but doesn't make count++ atomic. For counters I'd use AtomicInteger, which uses compare-and-set without locking. For maps, HashMap isn't thread-safe. Collections.synchronizedMap is safe but uses one lock for everything. ConcurrentHashMap locks only the bucket being updated and doesn't lock for reads, so it scales much better. One catch: get followed by put is still not atomic, so I use merge or computeIfAbsent, for example when counting payment statuses."
+
+**Product-company deep dive:**
+- **Q: How did ConcurrentHashMap work in Java 7 vs Java 8?**
+  **A:** Java 7 had 16 segments, each with its own lock. Java 8 fills an empty bucket with CAS and locks only a bucket's first node when writing to it, and long buckets become trees, like HashMap (J01).
+- **Q: Why no nulls in ConcurrentHashMap?**
+  **A:** If `get` returned null, you couldn't tell "missing" from "stored null", and you can't safely double-check with `containsKey` while other threads are changing the map.
+- **Q: What's a deadlock? How do you avoid it?**
+  **A:** Thread A holds lock 1 and waits for lock 2, while B holds lock 2 and waits for lock 1, so both wait forever. Avoid it by always taking locks in the **same order**, or use `ReentrantLock.tryLock` with a timeout.
+- **Q: ReentrantLock vs synchronized?**
+  **A:** ReentrantLock adds tryLock, timeouts, fairness and interruptible waits, but you must call `unlock()` in `finally`. synchronized releases the lock automatically.
+- **Q: What's "happens-before"?**
+  **A:** It's Java's visibility rule. A write to a volatile variable is visible to every later read of it. Releasing a lock makes your changes visible to the next thread that takes the same lock.
+
+---
+
+## ❓ Follow-up questions
+
+**synchronized method vs synchronized block?**
+A synchronized method locks `this` (or the class, if static) for the whole method. A block can lock a smaller piece of code, or a different object, so threads wait less.
 
 **Hashtable vs ConcurrentHashMap?**
 Hashtable locks the whole table for every call, like synchronizedMap. ConcurrentHashMap is the modern choice.
 
-**synchronized method vs synchronized block?**
-A synchronized method locks `this` (or the class, if it's static) for the whole method. A block can lock a smaller piece of code, or a different object, so threads wait less.
-
-**What's a deadlock?**
-Thread A holds lock 1 and waits for lock 2, while thread B holds lock 2 and waits for lock 1, so both wait forever. You avoid it by always taking locks in the same order, or by using `ReentrantLock.tryLock` with a timeout.
-
-**ReentrantLock vs synchronized?**
-ReentrantLock adds `tryLock`, timeouts, fairness and interruptible waiting. You must call `unlock()` in a `finally` block. synchronized releases the lock automatically.
-
 **Where does this show up in payments?**
-If it's true for you: counting statuses, in-memory caches of biller details, or a quick duplicate check with `processed.putIfAbsent(txnId, true)`, where only the first thread gets null back and processes that transaction.
-
-*Only if they push further:* this is the "happens-before" rule. A write to a volatile variable is visible to every later read of it. Releasing a lock makes your changes visible to the next thread that takes the same lock.
+If it's true for you: status counters, in-memory caches of biller details, and a quick duplicate-callback guard with `putIfAbsent(txnId, true)`.
 
 ---
 
-## Numbers to remember
+## 🧪 Test yourself (answer aloud, then click)
 
-| What | Value |
-|---|---|
-| Two threads × 100,000 `count++` on a plain int | wrong, e.g. 118,516 to 139,589 |
-| The same with volatile | still wrong |
-| The same with synchronized or AtomicInteger | exactly 200,000 |
-| HashMap with 2 threads × 50,000 keys | lost entries (about 80,000) |
-| synchronizedMap / ConcurrentHashMap | exactly 100,000 |
-| get-then-put on ConcurrentHashMap | wrong (about 52,000); `merge` gives 100,000 |
-
-## Self-check (answer aloud, then click to check)
-
-<details><summary>1. count is 5, and two threads run count++ at the same moment. What values can count end with?</summary>
+<details><summary>1. count is 5, and two threads run count++ at the same time. What can it end at?</summary>
 
 6 or 7. If their read-add-write steps overlap, one update is lost and it ends at 6.
 
 </details>
 
-<details><summary>2. Does making the counter volatile fix count++?</summary>
+<details><summary>2. Does volatile fix count++?</summary>
 
-No. volatile only makes the latest value visible. The read, add and write can still interleave.
+No. volatile gives visibility only; the three steps can still interleave.
 
 </details>
 
-<details><summary>3. One thread sets a stop flag, and a worker thread loops until it sees it. What do you use?</summary>
+<details><summary>3. One thread sets a stop flag and a worker loops until it sees it. What do you use?</summary>
 
-A volatile boolean. Without volatile, the worker may never see the change, as the demo showed.
+A volatile boolean. Without it, the worker may never see the change, as the demo shows.
 
 </details>
 
 <details><summary>4. Two threads each call incrementAndGet() 1,000 times on the same AtomicInteger. What's the final value?</summary>
 
-2,000. Compare-and-set retries instead of losing updates.
+2,000. CAS retries instead of losing updates.
 
 </details>
 
-<details><summary>5. Which map lets two threads write to different buckets at the same time: synchronizedMap or ConcurrentHashMap?</summary>
-
-ConcurrentHashMap, because it locks per bucket. synchronizedMap has one lock for the whole map.
-
-</details>
-
-<details><summary>6. On a ConcurrentHashMap, is map.put(k, map.get(k) + 1) safe from two threads?</summary>
+<details><summary>5. Is map.put(k, map.get(k) + 1) safe from two threads on a ConcurrentHashMap?</summary>
 
 No. Each call is safe, but a thread can sneak in between them. Use map.merge(k, 1, Integer::sum).
 
 </details>
 
-<details><summary>7. Why doesn't ConcurrentHashMap allow null?</summary>
+<details><summary>6. synchronizedMap vs ConcurrentHashMap: which lets two threads write different buckets at once?</summary>
 
-A null from get() would be ambiguous (missing, or a stored null?), and you can't safely double-check while other threads are changing the map.
+ConcurrentHashMap, because it locks per bucket.
 
 </details>
 
-If you get stuck on any of them, add it to [STUMBLE-LIST.md](../STUMBLE-LIST.md). When all 7 feel easy, tick J05 in the [README](../README.md) and send `next`.
+If you get stuck on one, add it to [STUMBLE-LIST.md](../STUMBLE-LIST.md). When they all feel easy, tick J05 in the [README](../README.md) and send `next`.
+
+---
+
+## ⚡ Quick Revision (2 hours before the interview)
+
+```mermaid
+sequenceDiagram
+    participant A as Thread A
+    participant C as count = 5
+    participant B as Thread B
+    A->>C: read 5
+    B->>C: read 5
+    A->>C: write 6
+    B->>C: write 6 (A's update lost)
+```
+
+**🧠 Must remember**
+1. `count++` is **read + add + write**, so two threads can lose updates (2 × 100,000 gave about **134,000**).
+2. **synchronized** gives one thread at a time **and** visibility: exactly **200,000**.
+3. **volatile** gives **visibility only**. Right for a stop flag, **wrong** for counters.
+4. **AtomicInteger** uses **CAS** ("set if still 5, else retry"): exactly 200,000, with no lock.
+5. **HashMap** is not thread-safe and loses entries (about 80,000 of 100,000).
+6. **synchronizedMap** has one lock for everything. **ConcurrentHashMap** locks per bucket and reads with no lock. It allows **no nulls**.
+7. **get-then-put** isn't atomic even on ConcurrentHashMap. Use `merge`, `compute` or `putIfAbsent`.
+8. **Deadlock:** two threads each hold the lock the other needs. Avoid it by taking locks in the same order.
+
+**⚠️ Top traps**
+- Claiming volatile makes counters safe.
+- Claiming a thread-safe map makes your logic safe.
+- Mixing up synchronizedMap and ConcurrentHashMap.
+
+**🎯 30-second answer:** "count++ is three steps, so threads can interleave and lose updates. synchronized lets one thread in at a time and makes changes visible. volatile only makes changes visible, so I use it for flags. For counters I use AtomicInteger, which uses compare-and-set. For shared maps I use ConcurrentHashMap, which locks per bucket instead of the whole map, and I use merge or putIfAbsent, because get-then-put isn't atomic."
+
+**🔑 Memory hook:** *"volatile: see the notice board. synchronized: one key to the room. Atomic: 'only if it still says 5'. ConcurrentHashMap: a counter for every section, not one queue for the whole bank."*
+
+**🗣️ Say it aloud (no peeking):**
+1. Draw the "read 5, read 5, write 6, write 6" timeline and explain it.
+2. volatile vs synchronized, with one use case each.
+3. Why is get-then-put unsafe on a ConcurrentHashMap, and what's the fix?

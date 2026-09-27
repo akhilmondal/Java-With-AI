@@ -17,7 +17,7 @@
      7   Vikram  1
      8   Neha    7
 
-   EXPECTED (every employee; Meera shows "No manager")
+   EXPECTED (every employee, Meera shows "No manager")
      employee  manager
      Meera     No manager
      Rahul     Meera
@@ -170,7 +170,7 @@ ORDER BY level;
 
 
 /* ============================================================================
-   HOW TO EXPLAIN IT IN THE INTERVIEW (your own words; cover these points)
+   HOW TO EXPLAIN IT IN THE INTERVIEW (your own words, cover these points)
      1. The manager is a row in the same table, so I join employees to itself
         with two aliases: e for the employee and m for the manager.
      2. The join condition is m.id = e.manager_id.
@@ -204,5 +204,19 @@ ORDER BY level;
      4. Who earns more than their manager?
    ============================================================================ */
 
--- Answers: 1) 7; Meera (no manager)   2) m.id = e.manager_id
+-- Answers: 1) 7, Meera (no manager)   2) m.id = e.manager_id
 --          3) 2 (Amit, Karan)          4) Neha (75000 vs Vikram's 70000)
+
+-- QUICK REVISION START
+-- Q05 Employee with manager's name (self-join)
+--   Picture : employees e (the employee)  --  e.manager_id = m.id  -->  employees m (the manager)
+--             Neha (manager_id 7)  ---->  id 7 = Vikram
+--   Query   : SELECT e.name, COALESCE(m.name, 'No manager') FROM employees e
+--             LEFT JOIN employees m ON m.id = e.manager_id       -> 8 rows, Meera = No manager
+--   INNER   : JOIN instead of LEFT JOIN -> 7 rows (the top boss disappears)
+--   Extras  : reports per manager: GROUP BY m.name -> Meera 4, Sneha 2, Vikram 1
+--             earns more than the manager: WHERE e.salary > m.salary -> Neha (75000 > 70000)
+--             the whole chain up: WITH RECURSIVE -> Neha, Vikram, Meera
+--   30-second answer: "The manager is a row in the same table, so I join employees to itself with
+--             aliases e and m on m.id = e.manager_id, as a LEFT JOIN so the top boss still appears."
+-- QUICK REVISION END

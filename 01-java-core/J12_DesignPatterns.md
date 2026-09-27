@@ -1,58 +1,76 @@
 # J12 ⭐ · Design patterns: Singleton, Builder, Factory, Strategy (and Proxy)
 
-**Read this first (12 min). Then run [J12_DesignPatterns.java](J12_DesignPatterns.java) to watch each step happen.**
+> **In one line:** A design pattern is a **named, proven fix for a common problem**:
+> - **Singleton:** exactly one shared instance.
+> - **Builder:** readable objects with many optional fields.
+> - **Factory:** one place decides which class to create.
+> - **Strategy:** swap a rule at runtime.
+> - **Proxy:** a stand-in that adds work around a call. That's how Spring's `@Transactional` works.
 
-Don't memorize definitions. Understand the 5 steps, each shown on your payment world:
-- a single config object (Singleton),
-- building a payment request (Builder),
-- picking a gateway (Factory),
-- fee rules for **₹1,000** (Strategy),
-- how Spring wraps your methods (Proxy).
-
-Once you get those, you can explain each pattern with an example from your own work.
+| ⏱️ Read | 🧪 Run | 🎯 Asked |
+|---|---|---|
+| 12 min | `java 01-java-core/J12_DesignPatterns.java` | "Which patterns have you used?" is standard for 3 years of experience; "how does @Transactional work?" follows |
 
 ---
 
-## The problem
+## 🧩 Words you need
 
-"Which design patterns have you used?" is a standard question for 3-year developers. Reciting the names of all 23 patterns doesn't impress anyone. Showing 4 or 5 you actually use, with **the problem each one solves**, does. And Spring itself is built on patterns, so you use more of them than you think.
+| Word | In one line |
+|---|---|
+| **pattern** | a reusable shape of code for a problem that keeps coming back |
+| **lazy creation** | build the object only the first time someone asks for it |
+| **fluent API** | calls you can chain: `.gateway("SETU").remarks("...").build()` |
+| **interchangeable** | different classes behind one interface, so either one can be plugged in |
+| **proxy** | an object that stands in front of the real one and adds work before and after each call |
 
-## Real-life pictures
+---
+
+## 🖼️ Picture it
 
 | Pattern | Everyday picture | Problem it solves |
 |---|---|---|
 | Singleton | the RBI governor: there's only one, and everyone refers to the same person | exactly one shared instance |
-| Builder | ordering a custom Subway sandwich: bread first, then optional extras, then "make it" | objects with many optional fields |
-| Factory | a car rental counter: you say "SUV" and get the right car; you don't build it | hide which class gets created |
-| Strategy | Google Maps: car, bike or walk, the same trip calculated differently | swap an algorithm at runtime |
+| Builder | ordering at Subway: bread first, then extras, then "make it" | objects with many optional fields |
+| Factory | a car rental counter: say "SUV" and get the right car | hide which class gets created |
+| Strategy | Google Maps: car, bike or walk, the same trip calculated differently | swap a rule at runtime |
 | Proxy | a personal assistant who handles things before and after your meeting | add work around a call without touching it |
 
 ---
 
-## Step by step
+## 🔬 How it works, step by step
 
 ### Step 1 · Singleton: exactly one instance
 
-The basic idea: a `private` constructor (so nobody else can call `new`) plus one static way to get the instance.
+The idea: a `private` constructor (nobody else can call `new`) plus one static way to get the instance.
 
-**The trap is the lazy version without locking.** Two threads call `getInstance()` at the same moment. Both see `instance == null`, and both create one:
+⚠️ **The trap is the lazy version with no locking.** Two threads can both see `null`:
 
-| Version | Instances created (demo, three runs) |
+```mermaid
+sequenceDiagram
+    participant A as Thread A
+    participant C as Config.instance
+    participant B as Thread B
+    A->>C: instance == null? yes
+    B->>C: instance == null? yes (A hasn't created it yet)
+    A->>C: instance = new Config()  (1st object)
+    B->>C: instance = new Config()  (2nd object!)
+```
+
+| Version | Instances created (demo, every run) |
 |---|---|
-| lazy, no locking | **2** ❌, every run |
-| double-checked locking | 1 ✅ |
+| lazy, no locking | **2** ❌ |
+| double-checked locking + `volatile` | 1 ✅ |
 | holder class | 1 ✅ |
-| enum | 1 ✅ |
+| `enum` | 1 ✅ |
 
 **Double-checked locking:**
 
 ```java
 private static volatile Config instance;          // volatile: nobody sees a half-built object (J05)
-
 static Config getInstance() {
     if (instance == null) {                        // 1st check: skip the lock once it exists
         synchronized (Config.class) {
-            if (instance == null) {                // 2nd check: the other thread may have created it
+            if (instance == null) {                // 2nd check: the other thread may have made it
                 instance = new Config();
             }
         }
@@ -61,62 +79,81 @@ static Config getInstance() {
 }
 ```
 
-**Simpler and safe:**
-- The **holder class**: the JVM creates it the first time it's used, once.
-- An **enum**: `enum Config { INSTANCE; }`. This is the simplest option, and even reflection and serialization can't make a second copy.
+✅ Simpler and safe: the **holder class** (the JVM creates it once, on first use) or an **enum**: `enum Config { INSTANCE; }`. Even reflection and serialization can't make a second enum instance.
 
-**In Spring you rarely write this yourself.** Every bean is a singleton **by default**, meaning one per Spring container (B03).
+🧠 **In Spring you rarely write this.** Every bean is a singleton **by default**, one per container (B03).
 
 ### Step 2 · Builder: many optional fields, readable code
 
-Without a builder:
+❌ `new PaymentRequest("TXN1001", 1500, "INR", "SETU", null, "electricity bill")`: which null is which?
 
-```java
-new PaymentRequest("TXN1001", 1500, "INR", "SETU", null, "electricity bill")   // which null is which?
+✅ With a builder:
+
+```mermaid
+flowchart LR
+    B["builder(TXN1001, 1500)<br/>required fields"] --> G[".gateway(SETU)"]
+    G --> R[".remarks(electricity bill)"]
+    R --> X[".build()<br/>checks the rules"]
+    X --> P["PaymentRequest<br/>currency = INR (default)"]
 ```
 
-With a builder:
+This gives `PaymentRequest[txnId=TXN1001, amount=1500, currency=INR, gateway=SETU, remarks=electricity bill]`. `builder("TXN1002", 0).build()` is refused with **"amount must be positive, got 0"**.
 
-```java
-PaymentRequest.builder("TXN1001", 1500)     // required fields first
-        .gateway("SETU")                    // optional ones by name, in any order
-        .remarks("electricity bill")
-        .build();                           // currency not set, so the default INR is used
+At work, Lombok's `@Builder` writes all of this for you.
+
+### Step 3 · Factory: one place decides which class
+
+```mermaid
+flowchart LR
+    C["caller: get(SETU)"] --> F{"PaymentGatewayFactory"}
+    F -->|"PAYU"| P["new PayUGateway"]
+    F -->|"SETU"| S["new SetuGateway"]
+    F -->|"anything else"| X["Unknown gateway: STRIPE"]
 ```
 
-This gives `PaymentRequest[txnId=TXN1001, amount=1500, currency=INR, gateway=SETU, remarks=electricity bill]`.
+The demo prints "factory gave SetuGateway -> SETU-OK-1500". Callers only know the **interface**, and adding a gateway changes one place.
 
-`build()` is also the place to **check the rules**: `builder("TXN1002", 0).build()` is refused with "amount must be positive, got 0". The result can be immutable (J10). In real projects, Lombok's `@Builder` writes all of this for you.
-
-### Step 3 · Factory: one place decides which class to create
-
-```java
-PaymentGateway gateway = PaymentGatewayFactory.get("SETU");   // the caller never writes "new SetuGateway()"
-```
-
-The demo prints "factory gave SetuGateway -> SETU-OK-1500". An unknown name, `get("STRIPE")`, is refused with "Unknown gateway: STRIPE".
-
-Callers only know the **interface**. Adding a gateway changes one place, the factory. **In Spring, the container is the factory**: inject `Map<String, PaymentGateway>` and Spring fills it with every gateway bean, keyed by bean name.
+🧠 **In Spring, the container is the factory.** Inject `Map<String, PaymentGateway>`, and Spring fills it with every gateway bean.
 
 ### Step 4 · Strategy: the same job, a different rule, chosen at runtime
 
-```java
-interface FeeStrategy { int fee(int amount); }
+```mermaid
+classDiagram
+    class FeeStrategy {
+        <<interface>>
+        +fee(int amount) int
+    }
+    FeeStrategy <|.. UpiFee : 0
+    FeeStrategy <|.. CardFee : 2 percent
+    FeeStrategy <|.. NetBankingFee : flat 10
 ```
 
-| Mode | Fee rule | Fee on ₹1,000 | Total |
+| Mode | Rule | Fee on ₹1,000 | Total |
 |---|---|---|---|
 | UPI | free | ₹0 | **₹1,000** |
 | CARD | 2% | ₹20 | **₹1,020** |
 | NETBANKING | flat ₹10 | ₹10 | **₹1,010** |
 
-The payment code just calls `strategy.fee(amount)`. It doesn't know or care which rule it has. A new mode is a new strategy, with no if-else to edit, which is the open/closed principle from J10.
+👀 **Notice:** the payment code just calls `strategy.fee(amount)`, with no if-else. A new mode is a new strategy, which is open/closed from J10.
 
-**Factory vs Strategy:** Factory answers "**which object** should I create?" Strategy answers "**which behaviour** should I use?" They're often used together: a factory (or a map) hands you the right strategy, as `feeStrategyFor(mode)` does in the demo.
+🧠 **Factory vs Strategy:** Factory answers "**which object** do I create?" Strategy answers "**which behaviour** do I use?" They're often used together: `feeStrategyFor(mode)` hands you the right strategy.
 
-### Step 5 · Proxy: how Spring's @Transactional really works
+### Step 5 · Proxy: how Spring's `@Transactional` really works
 
-The demo wraps a real PayU gateway in a proxy, an object that stands in front of the real one:
+```mermaid
+sequenceDiagram
+    participant Caller
+    participant P as Proxy (made by Spring)
+    participant R as Real PaymentService
+    Caller->>P: pay(1500)
+    P->>P: begin transaction
+    P->>R: pay(1500)
+    R-->>P: PAYU-OK-1500
+    P->>P: commit (or rollback on an exception)
+    P-->>Caller: PAYU-OK-1500
+```
+
+The demo builds exactly this with `java.lang.reflect.Proxy`:
 
 ```text
   [proxy] begin transaction before pay()
@@ -124,123 +161,162 @@ The demo wraps a real PayU gateway in a proxy, an object that stands in front of
   result: PAYU-OK-1500
 ```
 
-When you put `@Transactional` on a method, Spring does exactly this. Other beans receive a **proxy** of your class. It begins the transaction, calls your real method, then commits (or rolls back on an exception). `@Async` and `@Cacheable` work the same way.
+⚠️ **The classic bug:** calling a `@Transactional` method **from another method in the same class** skips the transaction. `this.method()` calls the real object directly and never passes through the proxy (B05). `@Async` and `@Cacheable` work the same way, and fail the same way.
 
-That explains a classic bug: **calling a `@Transactional` method from another method in the same class** skips the transaction. `this.method()` goes straight to the real object and never passes through the proxy (topic B05).
-
-### Patterns you already use through Spring
-
-| Pattern | Where in Spring |
+| Pattern | Where Spring uses it |
 |---|---|
 | Singleton | beans are singleton-scoped by default |
-| Factory | `BeanFactory` / `ApplicationContext` creates your beans |
-| Proxy | `@Transactional`, `@Async`, `@Cacheable`, Spring AOP |
-| Template Method | `JdbcTemplate`, `RestTemplate`, and J10's `BaseGateway.pay()` |
-| Observer | `ApplicationEvent` and `@EventListener`; RabbitMQ publish/subscribe |
-| Builder | `ResponseEntity.ok().header(...).body(...)`, `WebClient.builder()` |
+| Factory | `BeanFactory` / `ApplicationContext` |
+| Proxy | `@Transactional`, `@Async`, `@Cacheable`, AOP |
+| Template Method | `JdbcTemplate`, `RestTemplate` (and J10's `BaseGateway.pay()`) |
+| Observer | `@EventListener`, RabbitMQ publish/subscribe |
+| Builder | `ResponseEntity.ok().body(...)`, `WebClient.builder()` |
 
 ---
 
-## How to explain it in the interview
+## 💻 Code you should be able to write
 
-Use your own words. Pick 3 or 4 patterns, and for each give **the problem, then the example**:
+```java
+// Thread-safe lazy singleton (the holder idiom)
+public final class GatewayConfig {
+    private GatewayConfig() { }
+    private static class Holder { static final GatewayConfig INSTANCE = new GatewayConfig(); }
+    public static GatewayConfig getInstance() { return Holder.INSTANCE; }
+}
 
-1. **Singleton:** one shared instance. Lazy creation needs to be thread-safe: double-checked locking with volatile, a holder class, or an enum (the best). In Spring, beans are singletons by default.
-2. **Builder:** for objects with many optional fields. The code is readable, `build()` validates, and it can produce immutable objects. Use Lombok `@Builder`.
-3. **Factory:** hides which class gets created. Callers ask by name or type and get an interface. In Spring, inject `Map<String, PaymentGateway>`.
-4. **Strategy:** interchangeable rules behind one interface, picked at runtime, like fee calculation per payment mode. It replaces if-else chains.
-5. **Proxy:** Spring wraps beans in proxies for `@Transactional` and `@Async`, which is why self-invocation skips them.
-
-**Here's how it can sound** (about a minute, simple words):
-
-> "In my payment work, if it's true for you, the most useful patterns were strategy and factory. Each payment mode had its own fee rule behind one FeeStrategy interface, so adding a mode meant adding a class instead of editing an if-else chain, and a factory, or really a Spring-injected map, gave us the right gateway implementation by name. For request objects with many optional fields we used the builder pattern, mostly through Lombok's @Builder, and build() validated the amount. Singleton I know well, including why a lazy singleton needs double-checked locking with volatile, but in Spring I rarely write one because beans are singletons by default. And Spring's @Transactional is a proxy around the bean, which is why calling a transactional method from inside the same class doesn't start a transaction."
-
-**Tip:** don't list 10 patterns. Three with real examples beat ten names.
+// Strategy picked by payment mode, no if-else chain in the payment code
+Map<String, FeeStrategy> fees = Map.of(
+        "UPI", a -> 0,
+        "CARD", a -> a * 2 / 100,
+        "NETBANKING", a -> 10);
+int total = amount + fees.get(mode).fee(amount);
+```
 
 ---
 
-## Follow-up questions (simple answers)
+## ⚠️ Traps interviewers love
 
-**Why is the enum singleton considered the best?**
-The JVM guarantees exactly one instance, it's thread-safe with no extra code, and neither reflection nor serialization can create a second copy.
+| Trap | Why it's wrong | Say this instead |
+|---|---|---|
+| A lazy singleton with no locking | two threads create two instances (the demo: 2) | holder class, enum, or double-checked + volatile |
+| Double-checked locking without `volatile` | another thread may see a half-built object | "The field must be volatile" |
+| Listing 10 pattern names | it sounds memorized | "3 or 4, each with a real example" |
+| Calling a `@Transactional` method from the same class | it bypasses the proxy, so no transaction | call it through another bean |
+| "Factory and Strategy are the same" | one creates, the other behaves | "Often used together" |
 
-**How can a normal singleton be broken?**
-By reflection (calling the private constructor), by serialization (reading it back creates a copy unless you add `readResolve`), by cloning, or by different class loaders.
+---
 
-**Why is `volatile` needed in double-checked locking?**
-Creating an object is several steps, and without volatile they can be reordered. Another thread could then see a non-null reference to an object that isn't fully built yet (J05).
+## 🎯 In the interview
+
+**What they're really testing**
+- *Service companies:* what each pattern is, and a thread-safe singleton.
+- *Product companies:* **when** to use each one and its trade-offs, why `volatile` is needed in double-checked locking, how Spring applies patterns (proxies, factories), and the self-invocation bug.
+
+**Say it in this order** (pick 3 or 4, each as **problem → example**):
+1. **Singleton:** one instance. It needs thread safety (holder, enum, or double-checked + volatile). Spring beans are already singletons.
+2. **Builder:** many optional fields, readable and validated in `build()`. Lombok's `@Builder`.
+3. **Factory:** hides which class gets created. Spring injects `Map<String, PaymentGateway>`.
+4. **Strategy:** interchangeable rules behind one interface, like fees per mode, replacing an if-else chain.
+5. **Proxy:** Spring wraps beans for `@Transactional`, which is why self-invocation skips it.
+
+**Sample answer** (about a minute; tie it to your work only if true):
+
+> "In payment code the most useful patterns are strategy and factory. Each payment mode has its own fee rule behind a FeeStrategy interface, so adding a mode means adding a class instead of editing an if-else chain, and a factory, or really a Spring-injected map, gives me the right gateway by name. For request objects with many optional fields I use a builder, usually Lombok's @Builder, and build() validates the amount. For singletons, I know why a lazy one needs double-checked locking with volatile, but in Spring beans are singletons by default, so I rarely write one. And @Transactional is a proxy around the bean, which is why calling a transactional method from inside the same class doesn't start a transaction."
+
+**Product-company deep dive:**
+- **Q: Why is an enum the best singleton?**
+  **A:** The JVM guarantees exactly one instance, it's thread-safe with no extra code, and reflection or serialization can't create a second one.
+- **Q: How can a normal singleton be broken?**
+  **A:** Reflection (calling the private constructor), serialization (without `readResolve`), cloning, or several class loaders.
+- **Q: How does Spring create proxies?**
+  **A:** With JDK dynamic proxies (like the demo) when the bean implements an interface. Otherwise, and by default in Spring Boot, it uses **CGLIB**, which creates a subclass at runtime. That's why `final` methods can't be proxied.
+
+---
+
+## ❓ Follow-up questions
 
 **Singleton vs a class with only static methods?**
-A singleton is an object. It can implement an interface, be injected, be created lazily and be replaced with a mock in tests. A static utility class can't do any of that.
+A singleton is an object. It can implement interfaces, be injected, be created lazily and be mocked in tests. A static class can't do any of that.
 
 **Factory Method vs Abstract Factory?**
-A factory method is one method that decides which class to create. An abstract factory creates a whole **family** of related objects, for example all the UI parts for Windows or all of them for Mac.
-
-**Builder or constructor?**
-Use a constructor for 2 or 3 required fields. Use a builder when there are many parameters, especially optional ones, or several of the same type that are easy to mix up.
+A factory method is one method choosing a class. An abstract factory creates a **family** of related objects.
 
 **Which patterns does the JDK use?**
 - Builder: `StringBuilder`, `HttpRequest.newBuilder()`.
-- Factory: `List.of()`, `Executors.newFixedThreadPool()`.
-- Strategy: `Comparator` (J08).
-- Decorator: `BufferedReader` wrapping a `FileReader`.
-- Proxy: `java.lang.reflect.Proxy`, used in this demo.
-
-*Only if they push further:* Spring uses JDK dynamic proxies (like the demo) when your bean implements an interface. Otherwise, and by default in Spring Boot, it uses CGLIB, which creates a subclass of your class at runtime. That's why `final` methods can't be proxied.
+- Factory: `List.of()`, `Executors`.
+- Strategy: `Comparator`.
+- Decorator: `BufferedReader`.
+- Proxy: `java.lang.reflect.Proxy`.
 
 ---
 
-## Numbers to remember
+## 🧪 Test yourself (answer aloud, then click)
 
-| What | Value |
-|---|---|
-| Unsafe lazy singleton, 2 threads | 2 instances (wrong) |
-| Double-checked, holder, enum | 1 instance |
-| Fee on ₹1,000: UPI / CARD / NETBANKING | ₹0 / ₹20 / ₹10 |
-| Totals | ₹1,000 / ₹1,020 / ₹1,010 |
+<details><summary>1. Two threads call a lazy getInstance() with no locking at the same moment. How many instances?</summary>
 
-## Self-check (answer aloud, then click to check)
-
-<details><summary>1. Two threads call a lazy getInstance() that has no locking, at the same time. How many instances can be created?</summary>
-
-Two. Both see null before either one assigns it, as the demo showed every run.
+It can be 2, as the demo showed every run.
 
 </details>
 
-<details><summary>2. Why must the instance field be volatile in double-checked locking?</summary>
+<details><summary>2. Why must the field be volatile in double-checked locking?</summary>
 
-So no thread ever sees a reference to a half-constructed object, because volatile stops the steps from being reordered.
-
-</details>
-
-<details><summary>3. PaymentRequest has 2 required fields and 5 optional ones. Which pattern do you use?</summary>
-
-Builder: required fields in builder(...), optional ones by name, and build() validates.
+So no thread sees a reference to a half-constructed object.
 
 </details>
 
-<details><summary>4. What are the fees and totals on ₹1,000 for UPI (free), CARD (2%) and NETBANKING (flat ₹10)?</summary>
+<details><summary>3. PaymentRequest has 2 required and 5 optional fields. Which pattern?</summary>
 
-Fees ₹0, ₹20 and ₹10, so the totals are ₹1,000, ₹1,020 and ₹1,010.
-
-</details>
-
-<details><summary>5. Factory vs Strategy in one line each?</summary>
-
-A factory decides which object to create. A strategy is interchangeable behaviour you plug in and use. They're often used together.
+Builder.
 
 </details>
 
-<details><summary>6. Which pattern makes @Transactional work, and what's the classic bug?</summary>
+<details><summary>4. What are the fees and totals on ₹1,000 for UPI (free), CARD (2%) and NETBANKING (₹10)?</summary>
 
-Proxy. Calling a @Transactional method from inside the same class skips the proxy, so no transaction starts.
-
-</details>
-
-<details><summary>7. In a Spring app, do you write getInstance() singletons?</summary>
-
-Rarely. Beans are singleton-scoped by default, so you inject them instead.
+Fees 0, 20 and 10, so totals of 1,000, 1,020 and 1,010.
 
 </details>
 
-If you get stuck on any of them, add it to [STUMBLE-LIST.md](../STUMBLE-LIST.md). When all 7 feel easy, tick J12 in the [README](../README.md) and send `next`.
+<details><summary>5. Which pattern makes @Transactional work, and what's the classic bug?</summary>
+
+Proxy. A self-invocation from inside the same class skips the proxy, so no transaction starts.
+
+</details>
+
+If you get stuck on one, add it to [STUMBLE-LIST.md](../STUMBLE-LIST.md). When they all feel easy, tick J12 in the [README](../README.md) and send `next`.
+
+---
+
+## ⚡ Quick Revision (2 hours before the interview)
+
+```mermaid
+flowchart LR
+    SG["Singleton: one instance<br/>holder / enum / DCL + volatile"]
+    BU["Builder: optional fields<br/>build() validates"]
+    FA["Factory: which class?<br/>Spring Map of beans"]
+    ST["Strategy: which rule?<br/>UPI 0 / CARD 20 / NB 10"]
+    PR["Proxy: work around a call<br/>@Transactional"]
+```
+
+**🧠 Must remember**
+1. **Singleton:** a private constructor plus one access point. A lazy version with no locking creates **2** under a race. Use a **holder**, an **enum** (the best) or **double-checked + volatile**.
+2. Spring beans are **singletons by default**, so you rarely hand-write one.
+3. **Builder:** required fields in `builder(...)`, optional ones by name, and `build()` **validates**. Use Lombok's `@Builder`.
+4. **Factory:** one place picks the class. In Spring, inject `Map<String, PaymentGateway>`.
+5. **Strategy:** interchangeable rules behind an interface. The fee on ₹1,000 is **0 / 20 / 10**.
+6. **Factory** means "which object"; **Strategy** means "which behaviour". They're often used together.
+7. **Proxy:** Spring wraps beans for `@Transactional`, `@Async` and `@Cacheable`. **Self-invocation skips the proxy.**
+8. Spring uses CGLIB proxies by default, so **final methods can't be proxied**.
+
+**⚠️ Top traps**
+- A lazy singleton without locking, or without volatile.
+- Listing patterns with no examples.
+- Calling a @Transactional method from the same class.
+
+**🎯 30-second answer:** "I use strategy for fee rules per payment mode, and factory, usually a Spring-injected map, to pick the gateway, so new modes and gateways are new classes, not if-else edits. I use builders for requests with many optional fields. A singleton needs thread safety, like the holder idiom or an enum, but Spring beans are singletons already. And @Transactional works through a proxy, which is why self-invocation doesn't start a transaction."
+
+**🔑 Memory hook:** *"The RBI governor (one), a Subway order (build step by step), the rental counter (you ask, it picks), Google Maps modes (swap the rule), a personal assistant (before and after the meeting)."*
+
+**🗣️ Say it aloud (no peeking):**
+1. Show why a lazy singleton breaks with two threads, and give two fixes.
+2. Factory vs Strategy, with the payment example.
+3. How does @Transactional work, and what is the self-invocation problem?

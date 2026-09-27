@@ -171,7 +171,7 @@ SELECT (SELECT DISTINCT salary
 
 
 /* ============================================================================
-   HOW TO EXPLAIN IT IN THE INTERVIEW (your own words; cover these points)
+   HOW TO EXPLAIN IT IN THE INTERVIEW (your own words, cover these points)
      1. I rank the salaries from the top with DENSE_RANK, because ties share
         a rank with no gaps, and then I keep rank N.
      2. The window function runs after WHERE, so I rank in a subquery (or a CTE)
@@ -194,7 +194,7 @@ SELECT (SELECT DISTINCT salary
      A: Add PARTITION BY department_id inside OVER(...). That's Q02's pattern.
      Q: Which is faster?
      A: With an index on salary, LIMIT/OFFSET can stop early. DENSE_RANK has to
-        rank every row. For a small table it doesn't matter; say that you'd check
+        rank every row. For a small table it doesn't matter, say that you'd check
         EXPLAIN (Q07).
      Q: FETCH FIRST?
      A: OFFSET 1 ROWS FETCH FIRST 1 ROW ONLY is the SQL-standard spelling of
@@ -209,3 +209,19 @@ SELECT (SELECT DISTINCT salary
 
 -- Answers: 1) 75000, Neha   2) no rows, because RANK goes 1, 1, 3 after the tie
 --          3) OFFSET 4       4) without it, the tied 90000 fills position 2
+
+-- QUICK REVISION START
+-- Q01 Nth highest salary
+--   Best   : SELECT DISTINCT salary FROM (SELECT salary, DENSE_RANK() OVER (ORDER BY salary DESC) AS r
+--            FROM employees) x WHERE r = N
+--   Also   : SELECT DISTINCT salary FROM employees ORDER BY salary DESC LIMIT 1 OFFSET N-1
+--   Numbers: 90000, 90000 (a tie!), 80000, 75000 ... -> 2nd highest = 80000 (Priya), 3rd = 75000 (Neha)
+--   Picture: salary  90000 90000 80000 75000
+--            RANK      1     1     3     4     (skips 2)
+--            DENSE     1     1     2     3     (no gaps)  <- use this
+--            ROW_NUM   1     2     3     4     (row 2 is 90000 again)
+--   Traps  : RANK = 2 finds nothing | ROW_NUMBER = 2 gives 90000 | LIMIT/OFFSET without DISTINCT gives 90000 |
+--            no Nth value -> wrap the query in (SELECT ...) to get NULL
+--   30-second answer: "DENSE_RANK over salary descending in a subquery, then keep rank N, ties share a
+--            rank with no gaps. Without window functions: DISTINCT + ORDER BY DESC + LIMIT 1 OFFSET N-1."
+-- QUICK REVISION END

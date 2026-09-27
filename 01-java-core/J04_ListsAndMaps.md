@@ -1,114 +1,121 @@
 # J04 · ArrayList vs LinkedList, and HashMap vs LinkedHashMap vs TreeMap
 
-**Read this first (12 min). Then run [J04_ListsAndMaps.java](J04_ListsAndMaps.java) to watch each step happen.**
+> **In one line:** An **ArrayList** is an array, so reading by index is instant but inserting at the front shifts everything. A **LinkedList** is a chain, so adding at the ends is instant but reaching the middle means walking. The three maps differ in the **order** you get the keys back: **none** (HashMap), **arrival** (LinkedHashMap) or **sorted** (TreeMap).
 
-Don't memorize sentences. Understand the 7 steps and two small examples:
-- five transaction IDs **T1 to T5** for the lists,
-- four employee IDs **250, 42, 305, 101** for the maps.
-
-Once you get those, you can pick the right collection and defend the choice.
+| ⏱️ Read | 🧪 Run | 🎯 Asked |
+|---|---|---|
+| 12 min | `java 01-java-core/J04_ListsAndMaps.java` | "Which collection would you use and why?" comes up in every round |
 
 ---
 
-## The problem
+## 🧩 Words you need
 
-"Which list or map would you use, and why?" is really a question about **what each one is good and bad at**. There are two families here:
-
-- **Lists:** `ArrayList` vs `LinkedList`. They differ in how the items are stored, so some operations are fast in one and slow in the other.
-- **Maps:** `HashMap` vs `LinkedHashMap` vs `TreeMap`. They differ in the **order** you get the keys back in, and in speed.
-
-## Real-life pictures
-
-**ArrayList is a row of numbered cinema seats.** You can walk straight to seat 3. But if someone must sit in seat 0, everyone in the row shifts one seat to the right. When the row is full, everyone moves to a bigger hall, one and a half times the size.
-
-**LinkedList is a train of coaches.** Each coach is linked to the one before it and the one after it. Attaching a coach at the front or the back is quick. But to reach the fourth coach, you walk through the first three.
-
-**The three maps:**
-- **HashMap** is the cupboard with drawers from J01. It's fast, but you get the files back in drawer order, which looks random.
-- **LinkedHashMap** is the same cupboard plus a register that records the order the files arrived in.
-- **TreeMap** is a telephone directory. It's always sorted, and finding a name takes a few "higher or lower" steps (J01's guessing game).
-
-| Real life | Java |
+| Word | In one line |
 |---|---|
-| cinema seats in a row | `ArrayList` (an array inside) |
-| train coaches linked together | `LinkedList` (nodes with prev/next links) |
-| cupboard with drawers | `HashMap` |
-| cupboard plus an arrival register | `LinkedHashMap` |
-| telephone directory | `TreeMap` (sorted, a red-black tree inside) |
+| **index** | a position in a list: 0, 1, 2 … |
+| **capacity** | how many seats an ArrayList's array has, which isn't the same as how many are used |
+| **node** | a LinkedList box: the value plus links to the previous and next box |
+| **insertion order** | the order you put things in |
+| **LRU cache** | "Least Recently Used": when the cache is full, drop the entry unused for the longest time |
 
 ---
 
-## Part A: lists
+## 🖼️ Picture it: cinema seats vs train coaches
+
+- **ArrayList = numbered cinema seats in a row.** You can walk straight to seat 3. But to seat someone in seat 0, everyone shifts one seat right. When the row is full, everyone moves to a hall **1.5×** bigger.
+- **LinkedList = train coaches.** Each coach is hooked to the one before and after. Attaching a coach at either end is quick. But to reach the 4th coach, you walk through the first three.
+
+```mermaid
+flowchart LR
+    subgraph AL["ArrayList: one block of numbered seats"]
+        direction LR
+        s0["[0] T1"] --- s1["[1] T2"] --- s2["[2] T3"] --- s3["[3] T4"] --- s4["[4] T5"]
+    end
+```
+
+```mermaid
+flowchart LR
+    F(["first"]) --> n1["T1"] <--> n2["T2"] <--> n3["T3"] <--> n4["T4"] <--> n5["T5"]
+    L(["last"]) --> n5
+```
+
+👀 **Notice:** the ArrayList is **one block** you can jump into. The LinkedList is **separate boxes** joined by links, so you must follow them.
+
+**And the maps:**
+- **HashMap** is the cupboard with drawers (J01). It's fast, but keys come back in **drawer order**, which looks random.
+- **LinkedHashMap** is the same cupboard plus an **arrival register**, so you get insertion order.
+- **TreeMap** is a **telephone directory**: always sorted, and finding a name takes a few "higher or lower" steps.
+
+---
+
+## 🔬 How it works, step by step
 
 ### Step 1 · ArrayList: an array inside
 
 ```text
 index:   [0]  [1]  [2]  [3]  [4]  [5] ... [9]
           T1   T2   T3   T4   T5   (empty seats: capacity 10)
+
+add(0, "T0"):   T0 -> [0], T1 -> [1], T2 -> [2] ...   (5 items shift right)
 ```
 
-- **`get(3)`** jumps straight to seat 3 and returns T4. That's **O(1)**, one step.
-- **`add("T6")` at the end** takes the next empty seat. That's O(1).
-- **`add(0, "T0")` at the front**: T1 to T5 each shift one seat to the right, which is **5 moves**. With n items, that's **O(n)**. Removing from the front shifts everything left, the same way.
-- **When the array is full**, ArrayList creates a new array **1.5 times bigger** and copies every item over: **10 → 15 → 22 → 33 → 49**. The new size is the old size plus half of it (10 + 5 = 15, 15 + 7 = 22, 22 + 11 = 33). The first array of 10 is only created at the first `add()`.
+- **`get(3)`** jumps straight to seat 3 and returns T4. That's **O(1)**.
+- **`add(x)` at the end** takes the next empty seat, O(1) usually.
+- **`add(0, x)` at the front** makes 5 items shift. With n items that's **O(n)**, and removing from the front is the same.
+- **When the array is full**, ArrayList creates a new one **1.5× bigger** and copies everything: **10 → 15 → 22 → 33 → 49**. Each step is the old size plus half of it: 10 + 5 = 15, 15 + 7 = 22. The first array of 10 is only created at the first `add()`.
 
 ### Step 2 · LinkedList: coaches with links
 
-```text
-null <- [T1] <-> [T2] <-> [T3] <-> [T4] <-> [T5] -> null
-        first                                last
-```
-
-- **`addFirst("T0")` or `addLast("T6")`** just attaches a node at the front or back. Nothing shifts, so it's **O(1)**.
-- After those two adds, the list is [T0, T1, T2, T3, T4, T5, T6]. **`get(3)`** has to walk from the nearer end: T0, then T1, then T2, then T3. That's **O(n)**.
-- **Adding in the middle** is O(n) to walk to the spot, then O(1) to link the new node.
-- **Memory:** every item sits inside a node that also stores two links (prev and next), so a LinkedList uses much more memory than an ArrayList.
+- **`addFirst("T0")` or `addLast("T6")`** just hooks on a node, and nothing shifts: **O(1)**.
+- The list is now [T0, T1, T2, T3, T4, T5, T6]. **`get(3)`** walks T0 → T1 → T2 → T3: **O(n)**. It starts from the nearer end.
+- **Adding in the middle** takes O(n) to walk there, then O(1) to hook the node in.
+- **Memory:** every item sits in a node with **2 extra links** (prev and next), so a LinkedList uses much more memory.
 
 ### Step 3 · Measure it (the demo does this)
 
 | Test | ArrayList | LinkedList |
 |---|---|---|
-| `get(i)` for every i, 20,000 items | 0 to 1 ms (jumps) | about 120 ms (walks every time) |
-| `add(0, x)` 30,000 times | about 22 ms (shifts everything) | 2 to 3 ms (just links) |
+| `get(i)` for every i, 20,000 items | **0 to 1 ms** (jumps) | 117 to 168 ms (walks every time) |
+| `add(0, x)` 30,000 times | 21 to 39 ms (shifts everything) | **2 to 7 ms** (just links) |
 
-These times come from three runs on this laptop. Yours will be different, but the same list will win each test.
+👀 **Notice:** each list wins one test. These times come from several runs on this laptop. Yours will differ, but the same list will win each test.
 
-### Step 4 · Which list to pick
+### Step 4 · Which one to pick
 
-| | get by index | add at the end | add or remove at the front | memory |
-|---|---|---|---|---|
-| ArrayList | **O(1)** | O(1) usually | O(n), everything shifts | less |
-| LinkedList | O(n), walks | O(1) | **O(1)** | more (2 links per item) |
+```mermaid
+flowchart TD
+    Q{"What do you need?"} -->|"a list: read by index,<br/>add at the end, loop"| AL["ArrayList<br/>(the default)"]
+    Q -->|"a queue or stack:<br/>add/remove at the ends"| AD["ArrayDeque<br/>(better than LinkedList)"]
+    Q -->|"a map: just fast lookup"| HM["HashMap"]
+    Q -->|"a map: keep arrival order,<br/>or an LRU cache"| LHM["LinkedHashMap"]
+    Q -->|"a map: sorted keys,<br/>or 'nearest key' questions"| TM["TreeMap"]
+```
 
-> **ArrayList is the default.** Most code adds at the end and reads by index or loops over the list.
-> LinkedList is rarely the right answer. Even for a queue or a stack, `ArrayDeque` is usually better.
-
----
-
-## Part B: maps
+🧠 **ArrayList is the default** for lists. LinkedList is rarely the right answer. Even for queues, `ArrayDeque` is usually faster.
 
 ### Step 5 · Same keys, three maps, three orders
 
-Put the employee IDs **250, 42, 305, 101** (in that order) into each map, then print the keys:
+Put the employee IDs **250, 42, 305, 101**, in that order, into each map:
 
 | Map | Printed order | Why |
 |---|---|---|
 | HashMap | **[305, 101, 250, 42]** | bucket order (J01): 305 % 16 = 1, 101 % 16 = 5, and 250 and 42 both give 10 |
 | LinkedHashMap | **[250, 42, 305, 101]** | the order they were put in |
-| TreeMap | **[42, 101, 250, 305]** | sorted by key |
+| TreeMap | **[42, 101, 250, 305]** | sorted |
 
-> **HashMap has no order you can rely on. LinkedHashMap remembers arrival order. TreeMap keeps keys sorted.**
+### Step 6 · TreeMap answers "nearest key" questions
 
-### Step 6 · TreeMap's range methods (useful in payments)
+```text
+keys:   42 ------ 101 ------ (200) ------ 250 ------ 305
+                   ^                       ^
+           floorKey(200) = 101     ceilingKey(200) = 250
+```
 
-TreeMap is sorted, so it can answer "nearest key" questions:
+- `firstKey()` gives **42**, and `lastKey()` gives **305**.
+- `floorKey(200)` gives **101**, the biggest key that's 200 or less. `ceilingKey(200)` gives **250**, the smallest key that's 200 or more.
+- `headMap(250)` gives {42, 101}, everything below 250.
 
-- `firstKey()` returns 42 and `lastKey()` returns 305.
-- `floorKey(200)` returns **101**, the biggest key that's 200 or less.
-- `ceilingKey(200)` returns **250**, the smallest key that's 200 or more.
-- `headMap(250)` returns {42, 101}, all the keys below 250.
-
-**A real use: fee slabs.** Fees start at an amount, like this: from ₹0 the fee is ₹0, from ₹1,000 it's ₹5, from ₹5,000 it's ₹10, and from ₹10,000 it's ₹15.
+**A real payments use: fee slabs.** From ₹0 the fee is ₹0; from ₹1,000 it's ₹5; from ₹5,000 it's ₹10; from ₹10,000 it's ₹15.
 
 | Amount | `floorKey(amount)` | Fee |
 |---|---|---|
@@ -116,97 +123,123 @@ TreeMap is sorted, so it can answer "nearest key" questions:
 | ₹7,200 | 5,000 | ₹10 |
 | ₹10,000 | 10,000 | ₹15 |
 
-It's one line of code with no if-else chain: `slabs.floorEntry(amount).getValue()`.
+👀 **Notice:** one `floorEntry(amount)` call replaces a whole if-else chain.
 
 ### Step 7 · LinkedHashMap as an LRU cache
 
-LinkedHashMap can keep **access order** instead of insertion order: every `get` moves that key to the end. Add a size limit and you have an **LRU cache** (Least Recently Used, so the entry unused for the longest time gets evicted first).
+In **access order** mode (`new LinkedHashMap<>(16, 0.75f, true)`), every `get` moves that key to the end. Add a size limit (`removeEldestEntry`), and the front is always the least recently used entry.
 
-Here's a cache of biller details that holds **3** billers:
+```mermaid
+flowchart LR
+    S1["ELEC, WATER, GAS"] -->|"get(ELEC)"| S2["WATER, GAS, ELEC"]
+    S2 -->|"put(MOBILE):<br/>4 is more than 3"| S3["GAS, ELEC, MOBILE<br/>(WATER evicted)"]
+```
 
-1. Put ELEC, WATER and GAS. The order is [ELEC, WATER, GAS].
-2. Call `get("ELEC")`. ELEC was just used, so it moves to the end: [WATER, GAS, ELEC].
-3. Put MOBILE. Now there are 4 entries, but the limit is 3, so the least recently used one, **WATER**, is evicted: [GAS, ELEC, MOBILE].
-
-### The maps in one table
-
-| | Order | get/put | null key | Inside |
-|---|---|---|---|---|
-| HashMap | none (bucket order) | O(1) | one allowed | array of buckets |
-| LinkedHashMap | insertion (or access) | O(1) | one allowed | HashMap plus a linked list through the entries |
-| TreeMap | sorted by key | O(log n) | **not allowed** | red-black tree |
-
-The same three orders exist for sets: `HashSet`, `LinkedHashSet` and `TreeSet`. Each one uses the matching map inside.
+👀 **Notice:** WATER was at the front (unused the longest), so it's the one dropped. This is a biller-details cache in ten lines.
 
 ---
 
-## How to explain it in the interview
+## 💻 Code you should be able to write
 
-Use your own words. Cover these points in this order, using T1 to T5 and the four employee IDs:
+```java
+// An LRU cache in 10 lines
+class LruCache<K, V> extends LinkedHashMap<K, V> {
+    private final int maxSize;
+    LruCache(int maxSize) {
+        super(16, 0.75f, true);                       // true = access order
+        this.maxSize = maxSize;
+    }
+    @Override
+    protected boolean removeEldestEntry(Map.Entry<K, V> eldest) {
+        return size() > maxSize;                      // too many? drop the least recently used
+    }
+}
 
-1. **ArrayList** is a resizable array. `get(i)` is O(1). Adding or removing at the front or in the middle is O(n) because items shift. It grows by 1.5 times.
-2. **LinkedList** is a doubly linked list. Adding or removing at the ends is O(1), but `get(i)` is O(n) because it walks. It uses more memory per item.
-3. In practice, **ArrayList is the default**. LinkedList is rare, and ArrayDeque is better for queues.
-4. **HashMap** has no order and is O(1). **LinkedHashMap** keeps insertion order, or access order for an LRU cache. **TreeMap** keeps keys sorted, is O(log n) and has floor/ceiling range methods.
-5. Pick by need: plain speed → HashMap, arrival order → LinkedHashMap, sorted keys or ranges → TreeMap.
+// Fee slab lookup with TreeMap
+int fee = feeSlabs.floorEntry(amount).getValue();
+```
 
-**Here's how it can sound** (about a minute, simple words):
+**What the demo prints** (from a real run):
 
-> "ArrayList is backed by an array, so get by index is O(1). But inserting at the front shifts every element, so that's O(n), and when it's full it grows by 50% and copies everything. LinkedList is a doubly linked list, so adding or removing at the ends is O(1), but get by index has to walk the nodes, which is O(n), and each node carries two extra links. In practice I use ArrayList almost always. For maps, HashMap gives O(1) with no ordering. LinkedHashMap keeps insertion order, and with access order it can work as an LRU cache. TreeMap keeps keys sorted in a red-black tree, so operations are O(log n), and it has methods like floorKey, which I'd use for things like fee slabs by amount."
-
-**Tip:** if they ask "which would you use for X", say what X needs first (order? sorted? fast lookup?), then name the class.
+```text
+HashMap       : [305, 101, 250, 42]   (bucket order: 305->1, 101->5, 250 and 42->10)
+LinkedHashMap : [250, 42, 305, 101]   (the order they were put in)
+TreeMap       : [42, 101, 250, 305]   (sorted)
+...
+after get(ELEC) : [WATER, GAS, ELEC]
+after put MOBILE: [GAS, ELEC, MOBILE]   (WATER evicted)
+```
 
 ---
 
-## Follow-up questions (simple answers)
+## ⚠️ Traps interviewers love
+
+| Trap | Why it's wrong | Say this instead |
+|---|---|---|
+| "LinkedList is faster for inserts" | only at the ends. In the middle it first walks O(n), and its nodes are scattered in memory | "ArrayList by default; ArrayDeque for queues" |
+| "HashMap keeps insertion order" | it doesn't. Small maps can *look* ordered by luck | "LinkedHashMap for insertion order" |
+| A null key in a TreeMap | a NullPointerException, because it must compare keys | "TreeMap needs comparable, non-null keys" |
+| `Arrays.asList(...).add(x)` | fixed size, so UnsupportedOperationException | "`new ArrayList<>(Arrays.asList(...))`" |
+| "ArrayList grows 2×" | it grows **1.5×**; Vector grows 2× | "10 → 15 → 22 → 33" |
+
+---
+
+## 🎯 In the interview
+
+**What they're really testing**
+- *Service companies:* the differences in plain words and the Big-O table.
+- *Product companies:* **why** ArrayList usually wins (memory layout, cache-friendliness), the growth policy, LRU with LinkedHashMap, TreeMap's navigation methods, and picking a collection for a real scenario.
+
+**Say it in this order:**
+1. **ArrayList** is a resizable array: `get(i)` is O(1), inserting at the front or in the middle is O(n) because of shifting, and it grows 1.5×.
+2. **LinkedList** is a doubly linked list: O(1) at the ends, O(n) `get(i)`, and more memory per item.
+3. In practice **ArrayList is the default**, and ArrayDeque is better for queues.
+4. **HashMap** has no order, O(1). **LinkedHashMap** keeps insertion or access order (LRU). **TreeMap** is sorted, O(log n), with floor and ceiling.
+5. Pick by need: speed → HashMap, arrival order → LinkedHashMap, sorted or ranges → TreeMap.
+
+**Sample answer** (about a minute, in your own words):
+
+> "ArrayList is backed by an array, so get by index is O(1), but inserting at the front shifts every element, so it's O(n), and when it's full it grows by 50% and copies everything. LinkedList is a doubly linked list: adding or removing at the ends is O(1), but get by index walks the nodes, and each node carries two extra links. In practice I use ArrayList almost always. For maps, HashMap gives O(1) with no ordering. LinkedHashMap keeps insertion order, and in access order it can work as an LRU cache. TreeMap keeps keys sorted in a red-black tree, O(log n), with methods like floorKey, which I'd use for fee slabs by amount."
+
+**Product-company deep dive:**
+- **Q: Why is ArrayList often faster even with some shifting?**
+  **A:** Its items sit next to each other in memory, so the CPU reads them in fast blocks, and Java moves them with one `System.arraycopy`. LinkedList nodes are scattered, and it must walk node by node.
+- **Q: Design an LRU cache.**
+  **A:** LinkedHashMap in access order with `removeEldestEntry`, as above. From scratch, it's a HashMap plus a doubly linked list, which gives O(1) get and put.
+- **Q: What's the default ArrayList capacity?**
+  **A:** 10, created lazily at the first add. It grows 1.5×. If you know the size, pass it in: `new ArrayList<>(1000)`.
+
+---
+
+## ❓ Follow-up questions
 
 **ArrayList vs Vector?**
-Vector is the old version: every method is synchronized, and it doubles in size when full. Use ArrayList, or a concurrent collection if threads share the list.
-
-**What's the default capacity of an ArrayList?**
-10, but the array is only created at the first `add()`. Then it grows by 1.5 times: 15, 22, 33, 49 and so on.
-
-**Why is ArrayList often faster than LinkedList, even with some shifting?**
-An array's items sit next to each other in memory, so the CPU reads them quickly, and Java moves blocks of them in one go. A LinkedList's nodes are scattered, and it has to walk node by node to reach a position.
-
-**When would you really use LinkedList?**
-Rarely: when you add or remove at both ends a lot and never access by index. Even then, `ArrayDeque` is usually faster.
+Vector is the old one: every method is synchronized, and it grows 2×. Use ArrayList, or a concurrent collection for threads.
 
 **Arrays.asList vs List.of?**
-`Arrays.asList` has a fixed size: `set()` works, but `add()` and `remove()` throw UnsupportedOperationException. `List.of` is fully unmodifiable and doesn't allow nulls.
-
-**Can TreeMap have a null key?**
-No. It has to compare keys to sort them, so a null key throws NullPointerException. Keys must be Comparable, or you must give it a Comparator (J08).
+`Arrays.asList` has a fixed size: `set()` works, but `add()` and `remove()` throw. `List.of` is fully unmodifiable and doesn't allow nulls.
 
 **How does LinkedHashMap remember the order?**
-Every entry also sits in a doubly linked list (links to the previous and next entry) in arrival order. That costs 2 extra links per entry.
+Every entry also sits in a doubly linked list in arrival order. That costs 2 extra links per entry.
 
-*Only if they push further:* Java 21 added `SequencedCollection` and `SequencedMap`. They give `getFirst()`, `getLast()` and `reversed()` on List, Deque, LinkedHashMap, TreeMap and similar classes.
+**Sets?**
+`HashSet`, `LinkedHashSet` and `TreeSet` give the same three orders, because each one uses the matching map inside.
+
+*Only if they push further:* Java 21 added `SequencedCollection` and `SequencedMap`, which give `getFirst()`, `getLast()` and `reversed()` on lists, deques, LinkedHashMap and TreeMap.
 
 ---
 
-## Numbers to remember
+## 🧪 Test yourself (answer aloud, then click)
 
-| What | Value |
-|---|---|
-| ArrayList default capacity | 10 (created at the first add) |
-| ArrayList growth | 1.5×: 10 → 15 → 22 → 33 → 49 |
-| ArrayList `get(i)` / `add(0, x)` | O(1) / O(n) |
-| LinkedList `get(i)` / `addFirst` | O(n) / O(1) |
-| HashMap / LinkedHashMap / TreeMap get | O(1) / O(1) / O(log n) |
-| TreeMap null key | not allowed |
+<details><summary>1. An ArrayList holds 5 items. How many items move on add(0, x)?</summary>
 
-## Self-check (answer aloud, then click to check)
-
-<details><summary>1. An ArrayList holds 5 items. How many items move when you call add(0, x)?</summary>
-
-All 5. Each one shifts one place to the right.
+All 5.
 
 </details>
 
-<details><summary>2. An ArrayList starts with capacity 10. What are the next three capacities?</summary>
+<details><summary>2. An ArrayList starts at capacity 10. What are the next three capacities?</summary>
 
-15, 22 and 33. Each time, it's the old size plus half of it.
+15, 22, 33 (the old size plus half of it each time).
 
 </details>
 
@@ -216,28 +249,59 @@ About 500. It walks from the nearer end, and 500 is the middle.
 
 </details>
 
-<details><summary>4. You put the keys 250, 42, 305 and 101 into each map. In what order does each map print them?</summary>
+<details><summary>4. The keys 250, 42, 305, 101 go into each map. In what order does each print them?</summary>
 
-HashMap prints [305, 101, 250, 42] (bucket order), LinkedHashMap prints [250, 42, 305, 101] (insertion order), and TreeMap prints [42, 101, 250, 305] (sorted).
+HashMap: [305, 101, 250, 42]. LinkedHashMap: [250, 42, 305, 101]. TreeMap: [42, 101, 250, 305].
 
 </details>
 
-<details><summary>5. The fee slabs are ₹0→0, ₹1,000→5, ₹5,000→10 and ₹10,000→15. What's the fee for ₹4,999?</summary>
+<details><summary>5. The slabs are 0→0, 1000→5, 5000→10, 10000→15. What's the fee for ₹4,999?</summary>
 
 floorKey(4999) is 1000, so the fee is ₹5.
 
 </details>
 
-<details><summary>6. An LRU cache holds 3 billers. You put ELEC, WATER and GAS, call get WATER, then put MOBILE. Which one is evicted?</summary>
+<details><summary>6. An LRU cache holds 3. You put ELEC, WATER and GAS, call get(WATER), then put MOBILE. What's evicted?</summary>
 
-ELEC. After get WATER the order is [ELEC, GAS, WATER], so ELEC is the least recently used when MOBILE arrives.
-
-</details>
-
-<details><summary>7. Which map would you use to show recent transactions in the order they happened?</summary>
-
-LinkedHashMap, because it keeps insertion order. A List works too, if you don't need to look them up by key.
+ELEC. After get(WATER) the order is [ELEC, GAS, WATER], so ELEC is the least recently used.
 
 </details>
 
-If you get stuck on any of them, add it to [STUMBLE-LIST.md](../STUMBLE-LIST.md). When all 7 feel easy, tick J04 in the [README](../README.md) and send `next`.
+If you get stuck on one, add it to [STUMBLE-LIST.md](../STUMBLE-LIST.md). When they all feel easy, tick J04 in the [README](../README.md) and send `next`.
+
+---
+
+## ⚡ Quick Revision (2 hours before the interview)
+
+```mermaid
+flowchart TD
+    Q{"Need?"} -->|"list"| AL["ArrayList: get O(1), front insert O(n), grows 1.5x"]
+    Q -->|"ends only"| AD["ArrayDeque (not LinkedList)"]
+    Q -->|"map, fast"| HM["HashMap: no order, O(1)"]
+    Q -->|"map, arrival order / LRU"| LHM["LinkedHashMap"]
+    Q -->|"map, sorted / ranges"| TM["TreeMap: O(log n), floorKey"]
+```
+
+**🧠 Must remember**
+1. **ArrayList:** an array inside. `get(i)` is **O(1)**; `add(0)` is **O(n)** (5 items shift). It grows **1.5×**: 10 → 15 → 22 → 33 → 49.
+2. **LinkedList:** nodes with prev/next links. **O(1)** at the ends, **O(n)** `get(i)`, more memory.
+3. **ArrayList is the default.** Use **ArrayDeque** for queues and stacks.
+4. **HashMap:** no order. Keys 250, 42, 305, 101 print as [305, 101, 250, 42].
+5. **LinkedHashMap:** insertion order, [250, 42, 305, 101]. In access order it's an **LRU cache**.
+6. **TreeMap:** sorted, [42, 101, 250, 305]. **O(log n)**. `floorKey(200)` = 101, `ceilingKey(200)` = 250. **No null keys.**
+7. **Fee slabs:** `floorEntry(amount)` replaces an if-else chain.
+8. `Arrays.asList` is fixed-size. `List.of` is unmodifiable and allows no nulls.
+
+**⚠️ Top traps**
+- "LinkedList inserts are faster" is only true at the ends.
+- HashMap has no order you can rely on.
+- A null key in a TreeMap throws a NullPointerException.
+
+**🎯 30-second answer:** "ArrayList is a resizable array: O(1) get by index, O(n) inserts at the front, and it grows 1.5×. LinkedList is a doubly linked list: O(1) at the ends but O(n) to reach an index, with extra memory per node. So ArrayList is my default. For maps, HashMap is fastest with no order, LinkedHashMap keeps insertion order and can be an LRU cache, and TreeMap keeps keys sorted, O(log n), with floor and ceiling lookups."
+
+**🔑 Memory hook:** *"Cinema seats (jump to any seat, shifting is painful) vs train coaches (easy to hook on at the ends, you walk to reach the middle). The cupboard, the register or the directory: no order, arrival order, sorted."*
+
+**🗣️ Say it aloud (no peeking):**
+1. Why does ArrayList usually beat LinkedList, even for some inserts?
+2. The same 4 keys: what order does each map give, and why?
+3. How do you build an LRU cache with LinkedHashMap?

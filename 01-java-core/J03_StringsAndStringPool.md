@@ -1,120 +1,105 @@
-# J03 · String immutability, the String pool, StringBuilder vs StringBuffer
+# J03 · Strings: immutability, the String pool, StringBuilder vs StringBuffer
 
-**Read this first (10 min). Then run [J03_StringsAndStringPool.java](J03_StringsAndStringPool.java) to watch each step happen.**
+> **In one line:** A String can **never change**; every "change" makes a new String. Because of that, Java safely **shares** one copy of each literal in the **String pool**. To build text in a loop, use **StringBuilder**, or **StringBuffer** only if threads share it.
 
-Don't memorize sentences. Understand the 6 steps and the example with the string **"PAYU"**. Once you get those, you can answer any String question in your own words.
+| ⏱️ Read | 🧪 Run | 🎯 Asked |
+|---|---|---|
+| 10 min | `java 01-java-core/J03_StringsAndStringPool.java` | In every Java round: `==` vs equals, the pool, "why immutable?" |
 
 ---
 
-## The problem
+## 🧩 Words you need
 
-Strings are everywhere in your code: transaction IDs, statuses like "SUCCESS", gateway names like "PAYU", JSON. Java does two things with them that surprise people:
+| Word | In one line |
+|---|---|
+| **immutable** | can't be changed after it's created |
+| **String pool** | a special area where Java keeps **one shared copy** of each String literal |
+| **literal** | text written directly in code, like `"PAYU"` |
+| **StringBuilder** | a changeable text buffer; fast, **not** thread-safe |
+| **StringBuffer** | the same as StringBuilder, but every method is `synchronized` (thread-safe, slower) |
 
-1. A String **can never change**. Every "change" makes a new String.
-2. The same text written in your code is **shared**, as one object, through the String pool.
+---
 
-Because of this, `==` sometimes says true and sometimes says false for the same text. It also means building a long String with `+` in a loop is slow. Interviewers ask about all of it.
+## 🖼️ Picture it: the society notice board
 
-## Real-life picture: the society notice board
+- A **String** is a **printed notice**. You can't edit it; to change it, you print a new one.
+- The **String pool** is the **notice board**. There's one copy of each notice, and everyone reads the same sheet.
+- `new String("PAYU")` is **your own photocopy**: a separate sheet with the same words.
+- A **StringBuilder** is a **whiteboard**: you keep writing on the same board.
+- A **StringBuffer** is a whiteboard **in a locked room**: only one person writes at a time.
 
-- A **String** is a printed notice. You can't edit a printed notice. To change it, you print a new one.
-- The **String pool** is the society notice board. There's one copy of each notice, and everyone reads that same copy.
-- **`new String("PAYU")`** is asking for your own photocopy: a separate sheet, even though the words are the same.
-- A **StringBuilder** is a whiteboard. You keep writing on the same board.
-- A **StringBuffer** is a whiteboard in a room with a lock, so only one person can write at a time.
+```mermaid
+flowchart LR
+    a["a = #quot;PAYU#quot;"] --> P["PAYU<br/>(one copy, in the String pool)"]
+    b["b = #quot;PAYU#quot;"] --> P
+    c["c = new String(#quot;PAYU#quot;)"] --> H["PAYU<br/>(a separate object)"]
+```
+
+👀 **Notice:** `a` and `b` point to **the same object**; `c` points to a different one. That's why `a == b` is true but `a == c` is false.
 
 | Society | Java |
 |---|---|
-| a printed notice (can't be edited) | a `String` (immutable) |
-| the notice board, one shared copy | the String pool |
-| your own photocopy | `new String("PAYU")`, a separate object |
+| a printed notice | a `String` (immutable) |
+| the notice board | the String pool |
+| your own photocopy | `new String("PAYU")` |
 | a whiteboard | `StringBuilder` |
-| a whiteboard in a locked room | `StringBuffer` (synchronized) |
-
-```text
-      String pool (the notice board)
-a ──┐    ┌────────┐
-    ├───>│ "PAYU" │      a and b share ONE object
-b ──┘    └────────┘
-
-c ──────> "PAYU"         new String("PAYU"): a separate object
-```
+| a whiteboard in a locked room | `StringBuffer` |
 
 ---
 
-## Step by step
+## 🔬 How it works, step by step
 
 ### Step 1 · A String never changes
 
 ```java
 String gateway = "PAYU";
-gateway.toLowerCase();              // makes a NEW String "payu", but we didn't keep it
-System.out.println(gateway);        // PAYU, unchanged
+String other = gateway;              // two variables, one String
+gateway = gateway.toLowerCase();     // toLowerCase() returns a NEW String
+// gateway = "payu", other = "PAYU"
 ```
 
-To "change" it, you point the variable at the new String:
-
-```java
-String other = gateway;             // another variable pointing to "PAYU"
-gateway = gateway.toLowerCase();    // gateway now points to the new "payu"
-System.out.println(other);          // still PAYU
+```mermaid
+flowchart LR
+    g["gateway"] -->|"after toLowerCase()"| n["payu (new object)"]
+    o["other"] --> s["PAYU (never changed)"]
 ```
 
-```text
-before:  gateway ──> "PAYU" <── other
-after:   gateway ──> "payu"     other ──> "PAYU"   (the old String is untouched)
-```
-
-> **The variable moved. The String object never changed.**
-> Every "changing" method (toLowerCase, replace, substring, trim, concat) returns a **new** String.
+👀 **Notice:** the **variable moved** to a new object, and the old "PAYU" stayed exactly as it was. Every "changing" method returns a **new** String: `toLowerCase`, `replace`, `substring`, `trim` and `concat`.
 
 ### Step 2 · The String pool
 
-```java
-String a = "PAYU";                 // a literal goes into the pool
-String b = "PAYU";                 // the pool already has it, so b gets the SAME object
-String c = new String("PAYU");     // "new" always creates a separate object
-```
-
 | Check | Result | Why |
 |---|---|---|
-| `a == b` | **true** | the same object from the pool |
-| `a == c` | **false** | c is a separate object |
-| `a.equals(c)` | **true** | the same characters |
+| `a == b` | **true** | both are the pool's one "PAYU" |
+| `a == c` | **false** | `new` always makes a separate object |
+| `a.equals(c)` | **true** | the same text |
 | `a == c.intern()` | **true** | `intern()` returns the pool's copy |
 
-`==` asks "the same object?" and `equals()` asks "the same text?" (J02). **For Strings, always use `equals()`.**
+🧠 `==` asks "same object?", and `equals()` asks "same text?". **Always compare Strings with `equals()`.**
 
-The pool saves memory. If 50 classes in your code use the literal "SUCCESS", there's still only **one** "SUCCESS" object.
+💡 **Why a pool?** To save memory. If 50 classes use the literal "SUCCESS", there's still only **one** "SUCCESS" object.
 
-### Step 3 · Why Strings are immutable
+### Step 3 · Why Strings are immutable: four reasons
 
-**Reason 1: the pool depends on it.** a and b share one object. If a could change it to "SETU", b would suddenly say "SETU" too. Sharing is only safe because nobody can change the shared copy. On a notice board that anyone could scribble on, nobody could trust any notice.
-
-**Reason 2: safe HashMap keys (J01).** A key must not change after `put()` (J01 Step 8). A String can't change, so it's the perfect key. It even saves its hashCode after calculating it once.
-
-**Reason 3: thread-safe for free.** Many threads can read the same String with no locks, because nobody can modify it.
-
-**Reason 4: security.** A DB username, a file path or a URL can't be changed after your code checks it.
+1. **The pool depends on it.** `a` and `b` share one object. If `a` could change it to "SETU", `b` would silently change too. Nobody can trust a notice board that anyone can scribble on.
+2. **They make safe HashMap keys** (J01). A key must never change after `put()`, and a String can't. It even caches its hashCode after the first call.
+3. **They're thread-safe for free.** Many threads can read the same String with no locks.
+4. **Security.** A DB username or a file path can't be changed after your code has checked it.
 
 ### Step 4 · Joined by the compiler vs joined while running
 
-```java
-"PA" + "YU" == "PAYU"         // true: the compiler joins them BEFORE the program runs, so it's the pool's "PAYU"
-
-String pa = "PA";
-pa + "YU" == "PAYU"           // false: joined WHILE running, which creates a new object
-
-final String fpa = "PA";
-fpa + "YU" == "PAYU"          // true: a final variable holding a literal is a constant, so the compiler joins it
+```mermaid
+flowchart TD
+    A["#quot;PA#quot; + #quot;YU#quot;"] -->|"fixed text: the compiler joins it"| P["the pool's PAYU<br/>== is true"]
+    B["pa + #quot;YU#quot;<br/>(pa is a normal variable)"] -->|"joined while running"| N["a NEW PAYU object<br/>== is false"]
+    C["finalPa + #quot;YU#quot;<br/>(final + literal)"] -->|"a constant: the compiler joins it"| P
 ```
 
-> **The compiler joins only fixed text. Anything joined while the program runs is a new object.**
-> This is another reason never to compare Strings with `==`.
+👀 **Notice:** this is exactly why `==` on Strings is a trap. The same text can be one object, or two.
 
 ### Step 5 · Joining in a loop: String vs StringBuilder
 
-Say you append the 7-character ID "TXN0001" five times with `+=`. Every round creates a **brand-new** String and copies all the characters so far into it:
+Append the 7-character "TXN0001" five times with `+=`. **Every round creates a new String** and copies everything so far:
 
 | Round | New String length | Characters copied |
 |---|---|---|
@@ -125,136 +110,202 @@ Say you append the 7-character ID "TXN0001" five times with `+=`. Every round cr
 | 5 | 35 | 35 |
 | **total** | | **105** |
 
-A StringBuilder writes into one growing buffer, so it writes each character once: **35**.
-With n rounds, `+=` does about n × n / 2 work, while StringBuilder does about n. The demo times 50,000 rounds. On this laptop, `+=` took about 170 to 270 ms and StringBuilder about 1 ms. Your numbers will be different, but the gap will still be huge.
+A StringBuilder writes into one growing buffer, so each character is written once: **35**.
 
-> **Joining in a loop? Use StringBuilder.**
-> A single line like `"Hello " + name` is fine, because Java already makes it efficient.
+👀 **Notice:** with n rounds, `+=` does about n × n / 2 work, but StringBuilder does about n. The demo does 50,000 rounds: on this laptop `+=` took **170 to 310 ms** and StringBuilder **1 to 3 ms**. Your times will differ, but the gap won't.
+
+💡 A single line like `"Hello " + name` is fine, because Java already makes one join efficient. **Loops** are the problem.
 
 ### Step 6 · StringBuilder vs StringBuffer
 
-They have the same methods: `append`, `insert`, `reverse`, `delete`. The only difference is locking:
+They have the same methods (`append`, `insert`, `reverse`, `delete`). The only difference is **locking**:
 
-- **StringBuffer** (old, Java 1.0): every method is `synchronized`, so one thread at a time. It's thread-safe, but slower.
-- **StringBuilder** (Java 5): no locking. It's faster, but not safe to share between threads.
+```mermaid
+sequenceDiagram
+    participant T1 as Thread 1
+    participant B as StringBuffer (locked room)
+    participant T2 as Thread 2
+    T1->>B: append("x") - takes the lock
+    T2--xB: must wait outside
+    B-->>T1: done, lock released
+    T2->>B: append("x") - now it's T2's turn
+```
 
-The demo has two threads each append "x" 100,000 times to the same object. The correct length is 200,000:
+In the demo, two threads each append "x" 100,000 times to the same object, so the right length is **200,000**:
+- **StringBuffer:** 200,000, every run.
+- **StringBuilder:** fewer, and a different number each run. This laptop printed 113,739, 119,494, 118,697 and 152,774. Appends get lost because both threads write the same array. In rare runs it can even crash with `ArrayIndexOutOfBoundsException`.
 
-- **StringBuffer:** 200,000 every time.
-- **StringBuilder:** fewer, and a different number each run. On this laptop three runs gave 113,739, 119,494 and 118,697. Appends get lost because both threads write to the same internal array at the same time. In rare runs it can even crash with `ArrayIndexOutOfBoundsException`.
-
-In real code you build a String inside one method, with one thread. So **StringBuilder is the default choice**. StringBuffer is almost never needed.
-
-### The whole topic in one table
+🧠 Text built inside one method runs on one thread, so **StringBuilder is the default**. StringBuffer is almost never needed.
 
 | | String | StringBuilder | StringBuffer |
 |---|---|---|---|
-| Can change? | no | yes | yes |
-| Thread-safe? | yes (nobody can change it) | **no** | yes (synchronized) |
-| Speed for many joins | slow (new object each time) | fastest | a bit slower (locking) |
-| Use it for | fixed text, keys, constants | building text in a method or loop | rarely: text shared between threads |
+| Can change? | ❌ | ✅ | ✅ |
+| Thread-safe? | ✅ (nobody can change it) | ❌ | ✅ (synchronized) |
+| Many joins | slow (a new object each time) | **fastest** | a bit slower (locking) |
+| Use it for | fixed text, keys, constants | building text in a method or loop | text shared between threads (rare) |
 
 ---
 
-## How to explain it in the interview
+## 💻 Code you should be able to write
 
-Use your own words. Cover these points in this order, using "PAYU":
+```java
+// Build a CSV line from many transactions: StringBuilder, not +=
+StringBuilder csv = new StringBuilder();
+for (String txnId : txnIds) {
+    if (csv.length() > 0) csv.append(',');   // no comma before the first one
+    csv.append(txnId);
+}
+String line = csv.toString();
 
-1. A String is **immutable**. Every change creates a new object, and the old one stays the same.
-2. String literals live in the **String pool** and are shared. `new String()` always creates a separate object. So compare Strings with **equals()**, not `==`.
-3. Immutability is what makes the pool safe. It also makes Strings safe **HashMap keys**, thread-safe and secure.
-4. Joining in a loop with `+` creates a new String every round, so use **StringBuilder**.
-5. **StringBuilder** isn't synchronized, so it's fast. **StringBuffer** is synchronized, so it's thread-safe but slower. StringBuilder is the default.
+// Compare text: equals, never ==
+if ("SUCCESS".equals(status)) { ... }        // literal first: no NullPointerException if status is null
+```
 
-**Here's how it can sound** (about a minute, simple words):
+**What the demo prints** (from a real run):
 
-> "String in Java is immutable. If I call toLowerCase on "PAYU", I get a new String "payu", and the original "PAYU" doesn't change. String literals are stored in the String pool, so if I write "PAYU" twice, both variables point to the same object. But new String("PAYU") always creates a separate object. That's why we compare Strings with equals, not ==. Immutability is what makes this sharing safe: if one reference could change the pooled "PAYU", every other reference would see the change. It also makes Strings good HashMap keys and thread-safe. Because every change creates a new object, joining strings in a loop with + is slow, so I use StringBuilder. StringBuffer does the same thing but its methods are synchronized, so it's thread-safe and slower. In normal code StringBuilder is the right choice."
+```text
+=== Step 2: the String pool ===
+a == b          : true
+a == c          : false
+a.equals(c)     : true
+a == c.intern() : true
+Notice: == compares objects, equals() compares text. Always use equals() for Strings.
 
-**Tip:** if you're asked "a == b?" questions, draw the pool box with arrows, as in the picture at the top, then answer.
+=== Step 5: joining in a loop ===
+total characters copied with += : 105
+StringBuilder writes each char once: 35
+50000 joins: String += took 311 ms, StringBuilder took 3 ms (same result: true)
+```
 
 ---
 
-## Follow-up questions (simple answers)
+## ⚠️ Traps interviewers love
 
-**How many objects does `new String("PAYU")` create?**
-Up to two. One is the literal "PAYU" in the pool, created only if it isn't already there. The other is the new object on the heap. If the pool already has "PAYU", only one new object is created.
+| Trap | Why it's wrong | Say this instead |
+|---|---|---|
+| Comparing Strings with `==` | it compares objects; the same text can be two objects | "`equals()` for content" |
+| "`s.toUpperCase()` changes s" | it returns a **new** String | "Strings are immutable: assign the result" |
+| `+=` in a loop | it copies everything every round, about n²/2 work | "StringBuilder" |
+| "StringBuffer is better because it's safe" | locking costs time and is rarely needed | "StringBuilder by default" |
+| "`new String("x")` creates 1 object" | it can create 2: the pool literal plus the heap object | "Up to two" |
 
-**Where is the String pool?**
-In the heap, since Java 7. Before that it was in PermGen (J09).
+---
 
-**What does `intern()` do?**
-It returns the pool's copy of that text, adding it to the pool first if it's missing.
+## 🎯 In the interview
+
+**What they're really testing**
+- *Service companies:* immutability, `==` vs equals, the pool, and String vs StringBuilder vs StringBuffer.
+- *Product companies:* **why** immutability (the pool, security, hashCode caching, thread safety), compile-time constant folding, the cost of `+=` in a loop, `intern()`, and why passwords go in a `char[]`.
+
+**Say it in this order:**
+1. A String is **immutable**: every change makes a new object.
+2. Literals are **shared** from the String pool; `new String()` makes a separate object. So compare with **equals()**.
+3. Immutability is what makes the pool safe. It also makes Strings safe HashMap keys, thread-safe and secure.
+4. `+` in a loop creates a new String every round, so use **StringBuilder**.
+5. StringBuilder isn't synchronized (fast). StringBuffer is synchronized (thread-safe, slower). **The default is StringBuilder.**
+
+**Sample answer** (about a minute, in your own words):
+
+> "String in Java is immutable. If I call toLowerCase on "PAYU", I get a new String, and the original doesn't change. String literals are stored in the String pool, so two variables with the literal "PAYU" point to the same object, while new String creates a separate one. That's why we compare with equals, not ==. Immutability is what makes this sharing safe, and it also makes Strings good HashMap keys and thread-safe. Because every change creates a new object, joining in a loop with + is slow, so I use StringBuilder. StringBuffer does the same but is synchronized, so it's slower. I only need it if threads share the buffer."
+
+**Product-company deep dive:**
+- **Q: How many objects does `new String("PAYU")` create?**
+  **A:** Up to two: the pool literal (only if it isn't there yet) plus the new heap object.
+- **Q: Why store passwords in a `char[]`?**
+  **A:** You can't erase a String. It stays in memory until garbage collection, maybe even in the pool. You can wipe a `char[]` right after use: `Arrays.fill(pwd, '0')`.
+- **Q: Where is the pool?**
+  **A:** In the heap, since Java 7. Before that it was in PermGen (J09).
+- **Q: Does `a + b` use StringBuilder?**
+  **A:** Old Java compiled it into StringBuilder calls. Since Java 9 it uses a faster built-in mechanism (`invokedynamic`). Either way, each `+` expression is one new String, so loops still need StringBuilder.
+- **Q: Compact strings?**
+  **A:** Since Java 9, Latin-1 text stores 1 byte per character instead of 2, which halves the memory for most Strings.
+
+---
+
+## ❓ Follow-up questions
 
 **Why is the String class `final`?**
-So nobody can write a subclass that changes the text. That would break the pool and every guarantee above.
+So nobody can make a subclass whose text changes. That would break the pool, security and every guarantee above.
 
-**Why store a password in a `char[]` and not a String?**
-You can't erase a String. It stays in memory until garbage collection and might even sit in the pool. You can overwrite a `char[]` with zeros right after use: `Arrays.fill(password, '0')`.
+**What does `intern()` do?**
+It returns the pool's copy of that text, adding it to the pool if it's missing.
 
-**Does `a + b` use StringBuilder internally?**
-Older Java turned `+` into StringBuilder calls. Since Java 9, it uses a faster built-in mechanism. Either way, each `+` expression makes one new String. So in a loop, still use StringBuilder.
-
-**equals() vs equalsIgnoreCase() vs compareTo()?**
-equals() checks the exact text. equalsIgnoreCase() ignores case, so "payu" matches "PAYU". compareTo() is for sorting: it returns a negative number, 0 or a positive number (J08).
-
-*Only if they push further:* since Java 9, a String of plain Latin-1 characters stores 1 byte per character instead of 2 ("compact strings"), which halves the memory for most text. String also caches its hashCode in a field after the first call.
+**equals vs equalsIgnoreCase vs compareTo?**
+equals checks the exact text. equalsIgnoreCase ignores case, so "payu" matches "PAYU". compareTo is for sorting: it returns a negative number, 0 or a positive number (J08).
 
 ---
 
-## Numbers to remember
-
-| What | Value |
-|---|---|
-| Two literals with the same text | one shared object (`==` is true) |
-| `new String("x")` | always a new object, plus the pool copy if it's missing |
-| Comparing Strings | `equals()`, never `==` |
-| 5 joins of 7 characters with `+=` | 105 characters copied |
-| The same with StringBuilder | 35 characters written |
-| StringBuilder | not synchronized, fastest |
-| StringBuffer | synchronized, thread-safe |
-
-## Self-check (answer aloud, then click to check)
+## 🧪 Test yourself (answer aloud, then click)
 
 <details><summary>1. a = "PAYU", b = "PAYU", c = new String("PAYU"). What are a == b, a == c, a.equals(c) and a == c.intern()?</summary>
 
-They are true, false, true and true. a and b share the pool object, c is separate, the text is the same, and intern() returns the pool copy.
+true, false, true, true.
 
 </details>
 
-<details><summary>2. String s = "PAYU"; s.toLowerCase(); System.out.println(s); What prints, and why?</summary>
+<details><summary>2. String s = "PAYU"; s.toLowerCase(); System.out.println(s); What prints?</summary>
 
-PAYU prints. toLowerCase() returned a new String, and nobody kept it. s still points to the original.
-
-</details>
-
-<details><summary>3. What do "PA" + "YU" == "PAYU", then pa + "YU" == "PAYU" (with a normal variable pa = "PA"), then the same with final pa give?</summary>
-
-They give true, false and true. The compiler joins fixed text, and a final variable holding a literal counts as fixed text. Joining a normal variable happens while the program runs, which creates a new object.
+PAYU. toLowerCase() returned a new String, and nobody kept it.
 
 </details>
 
-<details><summary>4. You append "TXN0001" 4 times with +=. How many characters are copied in total?</summary>
+<details><summary>3. What do "PA" + "YU" == "PAYU", pa + "YU" == "PAYU" (normal variable) and the same with a final variable give?</summary>
 
-7 + 14 + 21 + 28 = 70. StringBuilder would write only 28.
-
-</details>
-
-<details><summary>5. new String("SETU"), when the pool doesn't have "SETU" yet: how many objects are created?</summary>
-
-Two: the pool literal "SETU" and the separate heap object.
+true, false, true. The compiler joins fixed text and constants. Anything joined while running is a new object.
 
 </details>
 
-<details><summary>6. You build a CSV line from 1,000 transactions inside a method. Which class do you use?</summary>
+<details><summary>4. You append "TXN0001" 4 times with +=. How many characters are copied?</summary>
 
-StringBuilder. It's a loop, so avoid String +=, and it runs in one thread, so StringBuffer's locking isn't needed.
-
-</details>
-
-<details><summary>7. Why does the String pool need Strings to be immutable?</summary>
-
-Many variables share one pooled object. If one of them could change it, all the others would see the change.
+7 + 14 + 21 + 28 = 70. StringBuilder would write 28.
 
 </details>
 
-If you get stuck on any of them, add it to [STUMBLE-LIST.md](../STUMBLE-LIST.md). When all 7 feel easy, tick J03 in the [README](../README.md) and send `next`.
+<details><summary>5. You build a CSV line from 1,000 transactions inside a method. Which class do you use?</summary>
+
+StringBuilder. It's a loop, so not String +=, and it runs on one thread, so no locking is needed.
+
+</details>
+
+<details><summary>6. Why does the String pool need immutability?</summary>
+
+Many variables share one object. If one of them could change it, everyone else would see the change.
+
+</details>
+
+If you get stuck on one, add it to [STUMBLE-LIST.md](../STUMBLE-LIST.md). When they all feel easy, tick J03 in the [README](../README.md) and send `next`.
+
+---
+
+## ⚡ Quick Revision (2 hours before the interview)
+
+```mermaid
+flowchart LR
+    a["a = #quot;PAYU#quot;"] --> P["pool: PAYU"]
+    b["b = #quot;PAYU#quot;"] --> P
+    c["new String(#quot;PAYU#quot;)"] --> H["heap: separate PAYU"]
+```
+
+**🧠 Must remember**
+1. A String is **immutable**. `toLowerCase` and `replace` return a **new** String.
+2. Literals are shared from the **String pool**: `a == b` is true. `new String` is a separate object: `a == c` is false.
+3. **Always compare with `equals()`.** `==` compares objects.
+4. `"PA" + "YU"` is joined by the compiler and is the pool object. `pa + "YU"` (a normal variable) is a new object.
+5. Why immutable: the **pool**, **HashMap keys** (a cached hash), **thread safety** and **security**.
+6. `+=` in a loop copies everything every round. 5 × "TXN0001" copies **105** characters, versus **35** with StringBuilder.
+7. **StringBuilder** is fast and not synchronized; it's the default. **StringBuffer** is synchronized and slower.
+8. `new String("x")` creates **up to 2** objects. Passwords go in a `char[]`, because it can be wiped.
+
+**⚠️ Top traps**
+- `==` on Strings.
+- Forgetting to assign the result: `s.trim();` does nothing to `s`.
+- `+=` inside loops.
+
+**🎯 30-second answer:** "Strings are immutable, so every change creates a new object. Literals are shared in the String pool, which is safe only because nobody can change them, so we compare with equals, not ==. Immutability also makes Strings safe HashMap keys and thread-safe. For joining in loops I use StringBuilder. StringBuffer is the synchronized version, only needed if threads share it."
+
+**🔑 Memory hook:** *"A printed notice on the society board: one copy for everyone, and nobody can scribble on it. For drafts, use a whiteboard (StringBuilder); lock the room (StringBuffer) only if many people write."*
+
+**🗣️ Say it aloud (no peeking):**
+1. Why does `a == b` print true but `a == c` print false?
+2. Give four reasons why String is immutable.
+3. When would you use StringBuffer over StringBuilder?
