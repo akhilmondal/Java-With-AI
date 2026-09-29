@@ -6,6 +6,12 @@ import java.util.Map;
 /*
  * J10  SOLID, interface vs abstract class, immutable class: a runnable demo
  *
+ * THE STORY (why these rules exist)
+ *   One giant class, every change is risky      -> SOLID, one pain per letter  (around 2000)
+ *   A new interface method broke every class    -> default methods             (Java 8)
+ *   Shared objects changed behind your back     -> immutable classes
+ *   About 40 lines of boilerplate per class     -> records                     (Java 16)
+ *
  * WHAT YOU WILL SEE (the numbers match J10_SolidAndImmutability.md)
  *   Step 1  S: validator, gateway, repository and notifier each do one job
  *   Step 2  O: PayU 1020, Setu 1005, then Razorpay 1015 added as a NEW class only

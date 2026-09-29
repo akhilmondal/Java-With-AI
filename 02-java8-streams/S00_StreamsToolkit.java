@@ -12,6 +12,12 @@ import java.util.stream.IntStream;
 /*
  * S00  Streams toolkit: the collectors you need for the 8 programs (a runnable demo)
  *
+ * THE STORY (why each collector exists)
+ *   Counting per group was a loop with null checks -> groupingBy               (Java 8)
+ *   A map of lists isn't the answer                -> counting, summingInt, maxBy (downstream)
+ *   maxBy leaves an Optional in every bin          -> collectingAndThen(..., Optional::get)
+ *   toMap crashes when a key repeats               -> a merge function, toMap's 3rd argument
+ *
  * WHAT YOU WILL SEE (the numbers match S00_StreamsToolkit.md)
  *   Step 1  toList() and joining()
  *   Step 2  groupingBy: by status; counting {FAILED=2, PENDING=1, SUCCESS=3}; summing 1100/300/17000

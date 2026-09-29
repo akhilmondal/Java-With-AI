@@ -13,6 +13,12 @@ import java.util.concurrent.TimeoutException;
 /*
  * J06  ExecutorService, Future, CompletableFuture: a runnable demo
  *
+ * THE STORY (why there are four ways to run work in parallel)
+ *   Calls one by one are slow (900 ms)         -> new Thread() per call          (Java 1.0)
+ *   Threads are costly and return nothing      -> ExecutorService pool + Future  (Java 5)
+ *   Future.get() blocks, combining is manual   -> CompletableFuture              (Java 8)
+ *   Pool threads are heavy while they wait     -> virtual threads                (Java 21, see J11)
+ *
  * WHAT YOU WILL SEE (the numbers match J06_ExecutorsAndCompletableFuture.md)
  *   Step 1  3 biller calls one after another: about 900 ms (3 x 300)
  *   Step 2  a pool of 3 threads: about 300 ms; a pool of 2: about 600 ms

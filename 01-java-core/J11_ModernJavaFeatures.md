@@ -4,7 +4,51 @@
 
 | ⏱️ Read | 🧪 Run | 🎯 Asked |
 |---|---|---|
-| 12 min | `java 01-java-core/J11_ModernJavaFeatures.java` | Often the **opening** Java question: "Which version, and what's new?" |
+| 14 min | `java 01-java-core/J11_ModernJavaFeatures.java` | Often the **opening** Java question: "Which version, and what's new?" |
+
+---
+
+## 🧬 Why does this exist? The story
+
+Java didn't add features for fashion. Each one deletes a bug you've probably written, or boilerplate you've typed many times.
+
+1. **❌ The pain:** passing one line of logic, like "amount above 10,000", needed a 6-line anonymous class.
+2. **✅ The fix (Java 8, 2014): lambdas and streams.** `p -> p.amount() > 10_000`.
+3. **❌ New pain:** in the old switch, a forgotten `break` fell through into the next case. That's a classic bug.
+4. **✅ The fix (Java 14, 2020): switch expressions.** With the arrow form there's no fall-through, it returns a value, and it checks every enum value.
+5. **❌ New pain:** a simple DTO needed about 40 lines: constructor, getters, equals, hashCode and toString. Many teams used Lombok to hide it.
+6. **✅ The fix (Java 16, 2021): records.** One line.
+7. **❌ New pain:** one heavy OS thread per request. While it waits for an HTTP or DB reply, it just sits idle, and pools stop at a few hundred threads.
+8. **✅ The fix (Java 21, 2023): virtual threads.** Threads so cheap that lakhs of them can wait at once.
+
+```mermaid
+flowchart TD
+    A["❌ a 6-line anonymous class<br/>for one line of logic"] --> B["✅ lambdas + streams<br/>(Java 8, 2014)"]
+    B --> C["❌ a forgotten break falls through<br/>into the next case"]
+    C --> D["✅ switch expressions<br/>(Java 14, 2020)"]
+    D --> E["❌ 40-line DTOs<br/>getters, equals, hashCode"]
+    E --> F["✅ records: one line<br/>(Java 16, 2021)"]
+    F --> G["❌ one heavy OS thread per request<br/>idle while it waits"]
+    G --> H["✅ virtual threads<br/>(Java 21, 2023)"]
+```
+
+**Every feature in this lesson is one pain and its fix:**
+
+| Version | ❌ The pain | ✅ The feature |
+|---|---|---|
+| 8 (2014) | a 6-line anonymous class for one line of logic | **lambdas**, streams |
+| 8 (2014) | `java.util.Date` can be changed after it's created, and in `Calendar` January is month 0 | **java.time** (`LocalDate`) |
+| 10 (2018) | long types written out: `Map<String, List<Payment>> byStatus = ...` | **var** |
+| 14 (2020) | a forgotten `break` falls through into the next case | **switch expressions** |
+| 15 (2020) | JSON inside a String: `\"` and `\n` and `+` on every line | **text blocks** |
+| 16 (2021) | about 40 lines for a simple DTO | **records** |
+| 16 (2021) | check the type, then cast it again: `(Success) x` | **instanceof pattern** |
+| 17 (2021) | anyone can add a subtype, so an if-else chain silently misses the new one | **sealed** types |
+| 21 (2023) | one heavy OS thread per request, idle while it waits | **virtual threads** |
+
+🧠 **So it's not random:** this is also the best interview answer. Don't just list features. Name a feature **and the pain it removed for you**.
+
+---
 
 The running example is four payments:
 
@@ -214,8 +258,8 @@ try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
 **Say it in this order:**
 1. Java ships every 6 months; the **LTS** versions are 8, 11, 17, 21 and 25. Say the version you use at work (only if true).
 2. **Java 8** was the big shift: lambdas, functional interfaces, streams, Optional, default methods, java.time.
-3. Newer features you use, **with the reason**: records (less boilerplate), switch expressions (no fall-through, exhaustive), text blocks, `var`.
-4. **17/21:** sealed + pattern-matching switch lets the compiler check every case. **Virtual threads** scale blocking I/O cheaply.
+3. Newer features you use, **with the pain each one removed**: records (40-line DTOs), switch expressions (the forgotten `break`), text blocks (escaped JSON), `var` (long type names).
+4. **17/21:** sealed + pattern-matching switch lets the compiler check every case. **Virtual threads** fix "one heavy thread per waiting request", so blocking I/O scales cheaply.
 
 **Sample answer** (about a minute; change the version to yours):
 
@@ -287,11 +331,19 @@ No. The type is fixed at compile time.
 
 </details>
 
+<details><summary>7. What pain did each of these fix: records, switch expressions, text blocks, virtual threads?</summary>
+
+Records: 40-line DTOs. Switch expressions: fall-through bugs from a forgotten break. Text blocks: JSON full of \" and \n. Virtual threads: one heavy OS thread sitting idle per waiting request.
+
+</details>
+
 If you get stuck on one, add it to [STUMBLE-LIST.md](../STUMBLE-LIST.md). When they all feel easy, tick J11 in the [README](../README.md) and send `next`.
 
 ---
 
 ## ⚡ Quick Revision (2 hours before the interview)
+
+**🧬 The story:** 6-line anonymous classes → **lambdas** (8) · a forgotten `break` → **switch expressions** (14) · escaped JSON → **text blocks** (15) · 40-line DTOs → **records** (16) · unknown subtypes → **sealed** (17) · one heavy thread per waiting request → **virtual threads** (21).
 
 ```mermaid
 timeline
@@ -322,6 +374,6 @@ timeline
 **🔑 Memory hook:** *"8 gave lambdas, 17 gave records, 21 gave virtual threads. Gig workers only take a desk while they're working."*
 
 **🗣️ Say it aloud (no peeking):**
-1. Which Java do you use, and name two features from it you actually used.
+1. Which Java do you use? Name two features you actually used, and the pain each one removed.
 2. Why is a switch over a sealed interface safer than if-else with instanceof?
 3. When do virtual threads help, and when don't they?

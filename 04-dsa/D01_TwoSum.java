@@ -55,6 +55,18 @@ public class D01_TwoSum {
     }
 
     // =========================================================================
+    // WHY THE BETTER WAY EXISTS (the story)
+    // =========================================================================
+    //   The pain : brute force asks every pair "do we add up to 900?". For
+    //              10,000 bills that's about 5 crore questions. The timing at
+    //              the end of main() shows the cost on 20,000 numbers.
+    //   The waste: each bill already KNOWS the partner it needs (900 - 200 = 700).
+    //              We just can't find that partner fast in a plain array.
+    //   The fix  : remember every bill we've seen in a HashMap. "Is 700 there?"
+    //              is then ONE lookup (J01), not a scan of the whole array.
+    //   The trade: we spend O(n) extra memory to save a full scan per number.
+
+    // =========================================================================
     // APPROACH 2: a HashMap, one pass (the answer interviewers want)
     // =========================================================================
     //   Picture a register at the door. Each bill walks in and asks: "is my
@@ -211,6 +223,8 @@ public class D01_TwoSum {
 /*
  * QUICK REVISION START
  * D01 Two Sum: return the indices of the two numbers that add up to the target.
+ *   Story   : checking every pair is about 5 crore checks for 10,000 numbers -> but each number already
+ *             knows its partner (target - x) -> a HashMap finds that partner in one lookup: O(n)
  *   Idea    : for each number x, look for its partner (target - x) in a HashMap of the numbers seen so far.
  *   Picture : [200, 450, 700, 250], target 900
  *               200 -> need 700 -> not seen -> remember 200 at 0

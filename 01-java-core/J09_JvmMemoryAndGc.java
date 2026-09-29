@@ -7,6 +7,12 @@ import java.util.List;
 /*
  * J09  JVM memory (stack, heap, metaspace), GC, StackOverflowError vs OutOfMemoryError
  *
+ * THE STORY (why the JVM manages memory this way)
+ *   C/C++: free memory by hand, leaks and crashes  -> garbage collector            (Java 1.0)
+ *   Checking the whole heap pauses the app         -> young and old generations    (around 2000)
+ *   Fixed-size PermGen ran out of room             -> Metaspace, grows as needed   (Java 8)
+ *   Big heaps meant pauses of seconds              -> G1 default (Java 9), ZGC (Java 15)
+ *
  * WHAT YOU WILL SEE (the numbers match J09_JvmMemoryAndGc.md)
  *   Step 1  the stack: 3 frames [validate, processPayment, main] while validate runs
  *   Step 2  the heap: max heap is about RAM / 4; Java passes a COPY of the reference

@@ -4,7 +4,37 @@
 
 | ⏱️ Read | 🧪 Run | 🎯 Asked |
 |---|---|---|
-| 10 min | `java 01-java-core/J07_Exceptions.java` | Every Java round. Spring rounds add "@Transactional rollback" |
+| 12 min | `java 01-java-core/J07_Exceptions.java` | Every Java round. Spring rounds add "@Transactional rollback" |
+
+---
+
+## 🧬 Why does this exist? The story
+
+Why does Java have exceptions, checked exceptions, `finally` **and** try-with-resources? Each one fixed a pain:
+
+1. **❌ The pain (before Java):** in C, a function reported failure by returning a code, like -1. Callers often forgot to check it, so the program carried on with bad data, silently.
+2. **✅ The fix (Java 1.0, 1996): exceptions.** An error jumps out of the method, and it can't be silently ignored. Someone catches it, or the program stops with a stack trace that shows exactly where it happened.
+3. **❌ New pain:** some failures are **expected**, like a missing file or a network drop. Callers forgot to plan for them.
+4. **✅ The fix (Java 1.0): checked exceptions.** For those, the compiler refuses to compile until you catch them or declare them with `throws`.
+5. **❌ New pain:** when an exception jumps out, the cleanup line (`close()`) is skipped, so files and DB connections leak.
+6. **✅ The fix (Java 1.0): `finally`.** A block that always runs, error or not.
+7. **❌ New pain:** real cleanup in finally got long and ugly: null checks, a nested try because `close()` can throw too, and an error in finally could **hide** the real one.
+8. **✅ The fix (Java 7, 2011): try-with-resources.** Put the resource in `try (...)`, and Java closes it for you, in reverse order. If `close()` also fails, that error is kept as "suppressed" instead of hiding the real one.
+
+```mermaid
+flowchart TD
+    A["❌ C returned -1 on failure<br/>callers forgot to check"] --> B["✅ exceptions: an error can't be<br/>silently ignored (Java 1.0)"]
+    B --> C["❌ callers forgot to plan for<br/>expected failures, like a missing file"]
+    C --> D["✅ checked exceptions: the compiler<br/>forces catch or throws (Java 1.0)"]
+    D --> E["❌ an exception skips close()<br/>files and connections leak"]
+    E --> F["✅ finally: always runs<br/>(Java 1.0)"]
+    F --> G["❌ finally blocks got long and ugly<br/>and could hide the real error"]
+    G --> H["✅ try-with-resources: auto close<br/>(Java 7, 2011)"]
+```
+
+👀 **Notice:** one more twist came later. Checked exceptions made big codebases noisy: a `throws` on every layer, and they don't fit inside lambdas. So Spring uses **unchecked** exceptions for business errors (Step 5).
+
+🧠 **So it's not random:** exceptions stop errors being ignored, checked exceptions make you plan for expected failures, and `finally` and try-with-resources make sure cleanup never gets skipped.
 
 ---
 
@@ -216,7 +246,8 @@ return in try (1) and in finally (2) -> method returns 2
 - *Service companies:* checked vs unchecked, throw vs throws, final/finally/finalize, and try-with-resources.
 - *Product companies:* designing an exception strategy (custom exceptions, wrapping with a cause, where to catch), suppressed exceptions, @Transactional rollback rules, and exceptions across threads (ExecutionException).
 
-**Say it in this order:**
+**Say it in this order** (start with the problem):
+0. **Why exceptions exist:** error codes could be silently ignored. An exception can't be: someone catches it, or the program stops and shows where.
 1. Everything comes from **Throwable**, which has two branches. **Error** is for JVM problems you don't catch. **Exception** is for problems you handle.
 2. **Checked** (IOException, SQLException): you must catch or declare them. **Unchecked** (RuntimeException and below): usually bugs, not forced.
 3. **finally** always runs, so do cleanup there, and never return from it.
@@ -225,7 +256,7 @@ return in try (1) and in finally (2) -> method returns 2
 
 **Sample answer** (about a minute, in your own words):
 
-> "In Java all exceptions come from Throwable. Errors like OutOfMemoryError are JVM problems we don't catch. Exceptions split into checked and unchecked. Checked ones, like IOException, must be caught or declared, because they're about things outside our control, like a missing file. Unchecked ones extend RuntimeException, like NullPointerException, and usually mean a bug. finally always runs, so it's for cleanup, and I never return from it because that overrides the try's return. For resources like connections I use try-with-resources, which closes them automatically in reverse order. For business rules I create custom unchecked exceptions, like InsufficientBalanceException when the balance is 1,000 and the debit is 1,500. In Spring, that means @Transactional rolls back by default, and a @RestControllerAdvice turns it into a proper HTTP response."
+> "Exceptions exist so errors can't be silently ignored, the way return codes in C often were. In Java all exceptions come from Throwable. Errors like OutOfMemoryError are JVM problems we don't catch. Exceptions split into checked and unchecked. Checked ones, like IOException, must be caught or declared, because they're about things outside our control, like a missing file. Unchecked ones extend RuntimeException, like NullPointerException, and usually mean a bug. finally always runs, so it's for cleanup, and I never return from it because that overrides the try's return. For resources like connections I use try-with-resources, which closes them automatically in reverse order. For business rules I create custom unchecked exceptions, like InsufficientBalanceException when the balance is 1,000 and the debit is 1,500. In Spring, that means @Transactional rolls back by default, and a @RestControllerAdvice turns it into a proper HTTP response."
 
 **Product-company deep dive:**
 - **Q: Where should exceptions be caught?**
@@ -295,11 +326,19 @@ There's no throws clutter, and @Transactional rolls back automatically only for 
 
 </details>
 
+<details><summary>7. Java 1.0 already had finally. Why was try-with-resources added in Java 7?</summary>
+
+Closing things in finally needed null checks and a nested try, because close() can throw too, and an error from finally could hide the real one. try-with-resources closes automatically, in reverse order, and keeps the close error as suppressed.
+
+</details>
+
 If you get stuck on one, add it to [STUMBLE-LIST.md](../STUMBLE-LIST.md). When they all feel easy, tick J07 in the [README](../README.md) and send `next`.
 
 ---
 
 ## ⚡ Quick Revision (2 hours before the interview)
+
+**🧬 The story:** error codes were silently ignored → **exceptions** (Java 1.0) → expected failures went unplanned → **checked exceptions** → an exception skips cleanup → **finally** → finally blocks got messy and hid errors → **try-with-resources** (Java 7). Later, checked exceptions felt noisy, so Spring prefers **unchecked**.
 
 ```mermaid
 flowchart TD
@@ -329,6 +368,6 @@ flowchart TD
 **🔑 Memory hook:** *"Checked = the mandatory field on the bank form. Unchecked = your own mistake. Error = the building's on fire. finally = switch off the lights on the way out."*
 
 **🗣️ Say it aloud (no peeking):**
-1. Checked vs unchecked, with one example each.
-2. What does try-with-resources do if both the body and close() throw?
+1. Why do exceptions exist? Then checked vs unchecked, with one example each.
+2. Why was try-with-resources added when finally already existed? What does it do if both the body and close() throw?
 3. Why should a failed debit throw an unchecked exception in a Spring service?

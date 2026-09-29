@@ -40,6 +40,8 @@
 
 [Full lesson](01-java-core/J01_HashMapInternals.md) · [Back to contents](#contents)
 
+**🧬 The story:** searching a list is slow → hashing, **Hashtable** (Java 1.0, locked) → locks wasted on one thread → **HashMap** (1.2, no locks) → unsafe when threads share it → **ConcurrentHashMap** (5) → too many keys in one bucket is slow again → **trees** in crowded buckets (Java 8).
+
 ```mermaid
 flowchart LR
     K["key"] -->|"hashCode()"| H["hash"]
@@ -64,13 +66,13 @@ flowchart LR
 - The resize happens past **75%**, not at 100%.
 - The same hashCode doesn't mean the same key.
 
-**🎯 30-second answer:** "HashMap is an array of buckets. put calls hashCode, turns it into a bucket index and stores the entry. Keys that collide are chained in the bucket, and equals finds the right one. In Java 8 a bucket with more than 8 entries becomes a red-black tree once there are 64+ buckets. At 75% full it doubles and moves the entries, so get and put stay O(1) on average."
+**🎯 30-second answer:** "Searching a list checks items one by one, so HashMap calculates where each key lives instead. It's an array of buckets. put calls hashCode, turns it into a bucket index and stores the entry. Keys that collide are chained in the bucket, and equals finds the right one. In Java 8 a bucket with more than 8 entries becomes a red-black tree once there are 64+ buckets. At 75% full it doubles and moves the entries, so get and put stay O(1) on average."
 
 **🔑 Memory hook:** *"Hash picks the drawer, equals picks the file. At 3/4 full, double the cupboard. More than 8 in a drawer with 64 drawers, and it becomes a tree."*
 
 **🗣️ Say it aloud (no peeking):**
-1. Keys 101 and 117 go into 16 buckets: where do they go, and why?
-2. Where does 117 go after the resize to 32, and when exactly does that resize happen?
+1. Why does HashMap exist, why did it replace Hashtable, and what pain made Java 8 add trees?
+2. Keys 101 and 117 go into 16 buckets. Where do they go, where does 117 go after the resize to 32, and when exactly does that resize happen?
 3. Why does a crowded bucket in a 16-bucket map cause a resize and not a tree?
 
 ---
@@ -80,6 +82,8 @@ flowchart LR
 ## J02 · equals() and hashCode()
 
 [Full lesson](01-java-core/J02_EqualsAndHashCode.md) · [Back to contents](#contents)
+
+**🧬 The story:** `==` can't see that two copies are the same employee → **equals()** defines "same" → calling equals() on every entry is slow → **hashCode()** picks the bucket first → the two must agree → **the contract** → writing both by hand goes wrong → **Objects.hash** (Java 7), Lombok, **records** (Java 16).
 
 ```mermaid
 flowchart LR
@@ -110,8 +114,8 @@ flowchart LR
 **🔑 Memory hook:** *"Two gates: the drawer (hashCode) and the name check (equals). Open only one gate and the file is never found."*
 
 **🗣️ Say it aloud (no peeking):**
-1. Walk through what happens with only equals() overridden.
-2. Why is it fine for two different objects to share a hashCode?
+1. Why do both equals() and hashCode() exist? What pain does each one fix?
+2. Walk through what happens with only equals() overridden.
 3. How do you write equals and hashCode for Employee by ID?
 
 ---
@@ -121,6 +125,8 @@ flowchart LR
 ## J03 · Strings: immutability, the String pool, StringBuilder vs StringBuffer
 
 [Full lesson](01-java-core/J03_StringsAndStringPool.md) · [Back to contents](#contents)
+
+**🧬 The story:** shared text must never change → **String** is immutable (Java 1.0) → `+=` in a loop copies everything → **StringBuffer**, a growing buffer with locks (Java 1.0) → the locks are wasted on one thread → **StringBuilder**, no locks (Java 5), the default.
 
 ```mermaid
 flowchart LR
@@ -136,7 +142,7 @@ flowchart LR
 4. `"PA" + "YU"` is joined by the compiler and is the pool object. `pa + "YU"` (a normal variable) is a new object.
 5. Why immutable: the **pool**, **HashMap keys** (a cached hash), **thread safety** and **security**.
 6. `+=` in a loop copies everything every round. 5 × "TXN0001" copies **105** characters, versus **35** with StringBuilder.
-7. **StringBuilder** is fast and not synchronized; it's the default. **StringBuffer** is synchronized and slower.
+7. **StringBuffer** (Java 1.0) is synchronized. **StringBuilder** (Java 5) is the same without locks, so it's faster, and it's the default.
 8. `new String("x")` creates **up to 2** objects. Passwords go in a `char[]`, because it can be wiped.
 
 **⚠️ Top traps**
@@ -144,14 +150,14 @@ flowchart LR
 - Forgetting to assign the result: `s.trim();` does nothing to `s`.
 - `+=` inside loops.
 
-**🎯 30-second answer:** "Strings are immutable, so every change creates a new object. Literals are shared in the String pool, which is safe only because nobody can change them, so we compare with equals, not ==. Immutability also makes Strings safe HashMap keys and thread-safe. For joining in loops I use StringBuilder. StringBuffer is the synchronized version, only needed if threads share it."
+**🎯 30-second answer:** "Strings are immutable, so every change creates a new object. Literals are shared in the String pool, which is safe only because nobody can change them, so we compare with equals, not ==. Immutability also makes Strings safe HashMap keys and thread-safe. The cost is that joining in a loop copies everything, so Java added a changeable buffer: StringBuffer in Java 1.0, with locks, then StringBuilder in Java 5, without them. I use StringBuilder, and StringBuffer only if threads share it."
 
-**🔑 Memory hook:** *"A printed notice on the society board: one copy for everyone, and nobody can scribble on it. For drafts, use a whiteboard (StringBuilder); lock the room (StringBuffer) only if many people write."*
+**🔑 Memory hook:** *"A printed notice on the society board: one copy for everyone, and nobody can scribble on it. For drafts, use a whiteboard (StringBuilder); lock the room (StringBuffer) only if many people write."* And: **safe first, fast later**, StringBuffer (1.0) then StringBuilder (5).
 
 **🗣️ Say it aloud (no peeking):**
 1. Why does `a == b` print true but `a == c` print false?
 2. Give four reasons why String is immutable.
-3. When would you use StringBuffer over StringBuilder?
+3. Tell the story: why does StringBuffer exist, and why was StringBuilder added later?
 
 ---
 
@@ -160,6 +166,8 @@ flowchart LR
 ## J04 · ArrayList vs LinkedList, and HashMap vs LinkedHashMap vs TreeMap
 
 [Full lesson](01-java-core/J04_ListsAndMaps.md) · [Back to contents](#contents)
+
+**🧬 The story:** arrays can't grow → **Vector, Hashtable** (Java 1.0, locked) → locks wasted, no common interface → **Collections Framework** (1.2): ArrayList, LinkedList, HashMap, TreeMap → HashMap forgets the order → **LinkedHashMap** (1.4) → LinkedList is a slow queue → **ArrayDeque** (6).
 
 ```mermaid
 flowchart TD
@@ -190,9 +198,9 @@ flowchart TD
 **🔑 Memory hook:** *"Cinema seats (jump to any seat, shifting is painful) vs train coaches (easy to hook on at the ends, you walk to reach the middle). The cupboard, the register or the directory: no order, arrival order, sorted."*
 
 **🗣️ Say it aloud (no peeking):**
-1. Why does ArrayList usually beat LinkedList, even for some inserts?
-2. The same 4 keys: what order does each map give, and why?
-3. How do you build an LRU cache with LinkedHashMap?
+1. Java already had Vector and Hashtable. Why were ArrayList, HashMap and later LinkedHashMap added?
+2. Why does ArrayList usually beat LinkedList, even for some inserts?
+3. The same 4 keys: what order does each map give? And how do you turn LinkedHashMap into an LRU cache?
 
 ---
 
@@ -201,6 +209,8 @@ flowchart TD
 ## J05 · synchronized, volatile, and ConcurrentHashMap vs synchronizedMap
 
 [Full lesson](01-java-core/J05_ConcurrencyBasics.md) · [Back to contents](#contents)
+
+**🧬 The story:** `count++` from two threads loses updates → **synchronized** (Java 1.0, one at a time) → a lock is heavy, and threads may read old values → **volatile** (visibility) → volatile can't fix `count++`, and locks make threads wait → **AtomicInteger**, CAS (Java 5) → one lock for a whole map makes a queue → **ConcurrentHashMap** (Java 5).
 
 ```mermaid
 sequenceDiagram
@@ -233,7 +243,7 @@ sequenceDiagram
 **🔑 Memory hook:** *"volatile: see the notice board. synchronized: one key to the room. Atomic: 'only if it still says 5'. ConcurrentHashMap: a counter for every section, not one queue for the whole bank."*
 
 **🗣️ Say it aloud (no peeking):**
-1. Draw the "read 5, read 5, write 6, write 6" timeline and explain it.
+1. Draw the "read 5, read 5, write 6, write 6" timeline. Then say why Java 5 added AtomicInteger and ConcurrentHashMap when synchronized already existed.
 2. volatile vs synchronized, with one use case each.
 3. Why is get-then-put unsafe on a ConcurrentHashMap, and what's the fix?
 
@@ -244,6 +254,8 @@ sequenceDiagram
 ## J06 · ExecutorService, Future and CompletableFuture
 
 [Full lesson](01-java-core/J06_ExecutorsAndCompletableFuture.md) · [Back to contents](#contents)
+
+**🧬 The story:** calls one by one are slow → **new Thread()** per task (Java 1.0) → threads are costly and return nothing → **ExecutorService + Future** (Java 5) → `get()` blocks, and combining is manual → **CompletableFuture** (Java 8) → pool threads are still heavy while they wait → **virtual threads** (Java 21).
 
 ```mermaid
 flowchart LR
@@ -273,7 +285,7 @@ flowchart LR
 **🔑 Memory hook:** *"A food court: cooks are threads, the token is a Future, and the buzzer with instructions is a CompletableFuture. 3 cooks, 3 orders, done in one round."*
 
 **🗣️ Say it aloud (no peeking):**
-1. How long do 5 calls of 300 ms take on 2 threads, and why?
+1. Why did Java go from new Thread() to pools, then to CompletableFuture, then to virtual threads? And how long do 5 calls of 300 ms take on 2 threads?
 2. thenApply vs thenCompose, with an example.
 3. How do you handle one of three billers being down?
 
@@ -284,6 +296,8 @@ flowchart LR
 ## J07 · Checked vs unchecked exceptions, try-with-resources, custom exceptions
 
 [Full lesson](01-java-core/J07_Exceptions.md) · [Back to contents](#contents)
+
+**🧬 The story:** error codes were silently ignored → **exceptions** (Java 1.0) → expected failures went unplanned → **checked exceptions** → an exception skips cleanup → **finally** → finally blocks got messy and hid errors → **try-with-resources** (Java 7). Later, checked exceptions felt noisy, so Spring prefers **unchecked**.
 
 ```mermaid
 flowchart TD
@@ -313,8 +327,8 @@ flowchart TD
 **🔑 Memory hook:** *"Checked = the mandatory field on the bank form. Unchecked = your own mistake. Error = the building's on fire. finally = switch off the lights on the way out."*
 
 **🗣️ Say it aloud (no peeking):**
-1. Checked vs unchecked, with one example each.
-2. What does try-with-resources do if both the body and close() throw?
+1. Why do exceptions exist? Then checked vs unchecked, with one example each.
+2. Why was try-with-resources added when finally already existed? What does it do if both the body and close() throw?
 3. Why should a failed debit throw an unchecked exception in a Spring service?
 
 ---
@@ -324,6 +338,8 @@ flowchart TD
 ## J08 · Comparable vs Comparator, map vs flatMap, intermediate vs terminal, Optional
 
 [Full lesson](01-java-core/J08_ComparatorStreamsOptional.md) · [Back to contents](#contents)
+
+**🧬 The story:** Java can't order objects → **Comparable** (Java 1.2, one order) → you need many orders → **Comparator** (1.2, but 6-line anonymous classes) → boilerplate hides the logic → **lambdas + streams** (Java 8) → `null` means forgotten checks and NPEs → **Optional** (Java 8).
 
 ```mermaid
 flowchart LR
@@ -350,9 +366,9 @@ flowchart LR
 **🔑 Memory hook:** *"The token on the card (Comparable) vs the doctor's rule for today (Comparator). The belt only moves when the last station asks (terminal). flatMap opens the boxes."*
 
 **🗣️ Say it aloud (no peeking):**
-1. Why did findFirst never check Amit and Priya?
-2. Show map vs flatMap with the skills example.
-3. When is orElse wasteful, and what do you use instead?
+1. Why do both Comparable and Comparator exist, and what pain did Optional fix?
+2. Why did findFirst never check Amit and Priya?
+3. Show map vs flatMap with the skills example. When is orElse wasteful, and what do you use instead?
 
 ---
 
@@ -361,6 +377,8 @@ flowchart LR
 ## J09 · JVM memory (stack, heap, metaspace), GC basics, OutOfMemoryError vs StackOverflowError
 
 [Full lesson](01-java-core/J09_JvmMemoryAndGc.md) · [Back to contents](#contents)
+
+**🧬 The story:** freeing memory by hand caused leaks and crashes → **GC** (Java 1.0) → checking the whole heap pauses the app → **generations**, because most objects die young → the fixed-size **PermGen** ran out → **Metaspace** (Java 8) → big heaps meant long pauses → **G1** default (Java 9), **ZGC** (Java 15).
 
 ```mermaid
 flowchart LR
@@ -398,7 +416,7 @@ flowchart LR
 **🔑 Memory hook:** *"The waiter's notepad (stack, torn off per order), the shared storeroom (heap, cleaned by the cleaner), and the recipe cabinet (metaspace)."*
 
 **🗣️ Say it aloud (no peeking):**
-1. Where do amount, p and the Payment object live, and why?
+1. Why does Java have a GC, and why did Metaspace replace PermGen? Then: where do amount, p and the Payment object live?
 2. Walk an object from Eden to Old, and explain why generations exist.
 3. How would you investigate an OutOfMemoryError in production?
 
@@ -409,6 +427,8 @@ flowchart LR
 ## J10 · SOLID, interface vs abstract class, immutable class
 
 [Full lesson](01-java-core/J10_SolidAndImmutability.md) · [Back to contents](#contents)
+
+**🧬 The story:** one giant class makes every change risky → **SOLID** (around 2000), one pain per letter → adding a method to an interface broke every implementer → **default methods** (Java 8) → shared objects changed behind your back → **immutable classes** → about 40 lines of boilerplate → **records** (Java 16).
 
 ```mermaid
 flowchart LR
@@ -441,8 +461,8 @@ flowchart LR
 **🔑 Memory hook:** *"One cook one job (S), a charging port (O), a key that must open the door (L), no forced thali (I), a wall socket (D)."*
 
 **🗣️ Say it aloud (no peeking):**
-1. SOLID with the gateway example, one line per letter.
-2. When would you pick an abstract class over an interface?
+1. SOLID with the gateway example: for each letter, the pain it prevents and the fix.
+2. When would you pick an abstract class over an interface? Why did Java 8 add default methods?
 3. Make PaymentRequest immutable. What's the easy-to-miss step?
 
 ---
@@ -452,6 +472,8 @@ flowchart LR
 ## J11 ⭐ · Modern Java, 8 to 21: the features interviewers ask about
 
 [Full lesson](01-java-core/J11_ModernJavaFeatures.md) · [Back to contents](#contents)
+
+**🧬 The story:** 6-line anonymous classes → **lambdas** (8) · a forgotten `break` → **switch expressions** (14) · escaped JSON → **text blocks** (15) · 40-line DTOs → **records** (16) · unknown subtypes → **sealed** (17) · one heavy thread per waiting request → **virtual threads** (21).
 
 ```mermaid
 timeline
@@ -482,7 +504,7 @@ timeline
 **🔑 Memory hook:** *"8 gave lambdas, 17 gave records, 21 gave virtual threads. Gig workers only take a desk while they're working."*
 
 **🗣️ Say it aloud (no peeking):**
-1. Which Java do you use, and name two features from it you actually used.
+1. Which Java do you use? Name two features you actually used, and the pain each one removed.
 2. Why is a switch over a sealed interface safer than if-else with instanceof?
 3. When do virtual threads help, and when don't they?
 
@@ -493,6 +515,8 @@ timeline
 ## J12 ⭐ · Design patterns: Singleton, Builder, Factory, Strategy (and Proxy)
 
 [Full lesson](01-java-core/J12_DesignPatterns.md) · [Back to contents](#contents)
+
+**🧬 The story:** each pattern is a pain that kept coming back (named in the Gang of Four book, 1994). Duplicate shared objects → **Singleton** · constructor calls full of nulls → **Builder** · if-else creation in 10 places → **Factory** · one giant if-else of rules → **Strategy** · transaction code by hand in every method → **Proxy**. Singleton's own story: 2 threads make 2 → synchronized → every call waits → double-checked + volatile → **holder / enum**.
 
 ```mermaid
 flowchart LR
@@ -523,8 +547,8 @@ flowchart LR
 **🔑 Memory hook:** *"The RBI governor (one), a Subway order (build step by step), the rental counter (you ask, it picks), Google Maps modes (swap the rule), a personal assistant (before and after the meeting)."*
 
 **🗣️ Say it aloud (no peeking):**
-1. Show why a lazy singleton breaks with two threads, and give two fixes.
-2. Factory vs Strategy, with the payment example.
+1. For each of the 5 patterns, say the pain it fixes in one line. Then Factory vs Strategy, with the payment example.
+2. Show why a lazy singleton breaks with two threads, and walk the fixes up to the enum.
 3. How does @Transactional work, and what is the self-invocation problem?
 
 ---
@@ -534,6 +558,8 @@ flowchart LR
 ## S00 · Streams toolkit: the collectors you need for the 8 programs
 
 [Full lesson](02-java8-streams/S00_StreamsToolkit.md) · [Back to contents](#contents)
+
+**🧬 The story:** counting per group took a loop with null checks → **groupingBy** (Java 8) → a map of lists isn't the answer → **downstream collectors** (counting, summingInt, maxBy) → maxBy leaves Optionals → **collectingAndThen** → toMap crashes on a repeated key → **merge function**.
 
 ```mermaid
 flowchart LR
@@ -567,7 +593,7 @@ flowchart LR
 **🔑 Memory hook:** *"The post office: groupingBy makes the bins, and the downstream writes the label: count, sum or heaviest. Partitioning is just Yes and No. toMap is the register: decide what to do if a number repeats."*
 
 **🗣️ Say it aloud (no peeking):**
-1. Write the "highest paid per department" collector from memory.
+1. Why does groupingBy need a downstream collector? Then write the "highest paid per department" collector from memory.
 2. What goes wrong with toMap on a callback log, and how do you fix it?
 3. How do you get a character-frequency map in first-seen order?
 
@@ -581,6 +607,8 @@ flowchart LR
 
 ```text
 S02 The 8 stream programs: one line each. Say the idea first, then write it.
+  Story: each program was a 10-line loop with null checks before Java 8. Streams made it one
+         pipeline, and each collector answers one question: count, sum, max, split in two.
   1 char frequency     : s.chars().mapToObj(c -> (char) c)
                            .collect(groupingBy(identity(), LinkedHashMap::new, counting()))   -> {S=3, U=1, C=2, E=1}
   2 first non-repeated : frequencyMap.entrySet().stream().filter(e -> e.getValue() == 1)
@@ -607,6 +635,8 @@ Memory hook: groupingBy makes the bins, the downstream writes the label; partiti
 ## Q00 · SQL toolkit: how a query really runs, JOINs, GROUP BY/HAVING, window functions
 
 [Full lesson](03-sql/Q00_sql_toolkit.md) · [Back to contents](#contents)
+
+**🧬 The story:** the same fact repeated in every row → **separate tables** (Codd, 1970) → the data is now in two tables → **JOIN** → too many rows for a report → **GROUP BY + HAVING** → grouping loses the names → **window functions** (SQL:2003, PostgreSQL 8.4).
 
 ```mermaid
 flowchart LR
@@ -641,7 +671,7 @@ flowchart LR
 
 **🗣️ Say it aloud (no peeking):**
 1. Walk the "at least 2 people over 60,000" query through the run order, with the numbers.
-2. RANK vs DENSE_RANK vs ROW_NUMBER, on the 90,000 tie.
+2. Why do window functions exist? Then RANK vs DENSE_RANK vs ROW_NUMBER, on the 90,000 tie.
 3. Why does NOT IN with a NULL return no rows?
 
 ---
@@ -654,6 +684,8 @@ flowchart LR
 
 ```text
 Q01 Nth highest salary
+  Story  : MAX gives only the top -> sort and skip one -> a tie at the top breaks "skip one" ->
+           DISTINCT, or DENSE_RANK (window functions, SQL:2003) where ties share a number
   Best   : SELECT DISTINCT salary FROM (SELECT salary, DENSE_RANK() OVER (ORDER BY salary DESC) AS r
            FROM employees) x WHERE r = N
   Also   : SELECT DISTINCT salary FROM employees ORDER BY salary DESC LIMIT 1 OFFSET N-1
@@ -678,6 +710,8 @@ Q01 Nth highest salary
 
 ```text
 Q02 Highest salary per department
+  Story       : one answer per department -> GROUP BY + MAX -> GROUP BY loses the name ->
+                match it back with a subquery, or rank inside each department (window function)
   Amount only : SELECT d.name, MAX(e.salary) FROM employees e JOIN departments d ON d.id = e.department_id
                 GROUP BY d.name                         -> BILLING 90000, PAYMENTS 90000, UI 75000
   Who earns it: DENSE_RANK() OVER (PARTITION BY department_id ORDER BY salary DESC) in a subquery,
@@ -698,6 +732,8 @@ Q02 Highest salary per department
 
 ```text
 Q03 Employees earning above their department's average
+  Story    : WHERE can't use AVG (it checks one row at a time) -> correlated subquery (runs per row) ->
+             CTE: each average once, joined back -> or AVG() OVER (PARTITION BY dept) on every row
   Averages : PAYMENTS 210000/3 = 70000 | BILLING 180000/3 = 60000 | UI 145000/2 = 72500
   Result   : Meera 90000, Priya 80000 (PAYMENTS), Sneha 90000 (BILLING), Neha 75000 (UI)
   Way 1    : WHERE e.salary > (SELECT AVG(salary) FROM employees e2 WHERE e2.department_id = e.department_id)
@@ -719,6 +755,8 @@ Q03 Employees earning above their department's average
 
 ```text
 Q04 Duplicate emails
+  Story   : WHERE can't filter on COUNT -> HAVING filters piles -> GROUP BY hides the extra rows' ids ->
+            ROW_NUMBER or MIN(id) to delete them -> a UNIQUE constraint stops new ones
   Find    : SELECT email, COUNT(*) FROM customers GROUP BY email HAVING COUNT(*) > 1
             -> anu@mail.com 2, ravi@mail.com 3
   Extras  : ROW_NUMBER() OVER (PARTITION BY email ORDER BY id) > 1 -> ids 3, 5, 6 are the extra copies
@@ -740,6 +778,9 @@ Q04 Duplicate emails
 
 ```text
 Q05 Employee with manager's name (self-join)
+  Story   : a managers table would store people twice -> manager_id in the same table ->
+            the name is in another row -> self-join with aliases e and m ->
+            INNER JOIN drops the top boss -> LEFT JOIN + COALESCE
   Picture : employees e (the employee)  --  e.manager_id = m.id  -->  employees m (the manager)
             Neha (manager_id 7)  ---->  id 7 = Vikram
   Query   : SELECT e.name, COALESCE(m.name, 'No manager') FROM employees e
@@ -762,6 +803,8 @@ Q05 Employee with manager's name (self-join)
 
 ```text
 Q06 Departments with zero employees
+  Story   : INNER JOIN hides unmatched rows -> LEFT JOIN keeps them, with NULLs -> keep e.id IS NULL ->
+            NOT IN breaks on a NULL -> NOT EXISTS
   Query   : SELECT d.name FROM departments d LEFT JOIN employees e ON e.department_id = d.id
             WHERE e.id IS NULL                                    -> SECURITY
   Same    : WHERE NOT EXISTS (SELECT 1 FROM employees e WHERE e.department_id = d.id)
@@ -782,6 +825,9 @@ Q06 Departments with zero employees
 
 ```text
 Q07 Indexes, ACID, isolation
+  Story     : reading every row is slow -> index | a crash mid-transfer loses money -> ACID transaction |
+              one at a time is too slow, all together is unsafe -> isolation levels |
+              two debits read the same 700 -> atomic UPDATE, FOR UPDATE or @Version
   Index     : a sorted B-tree, like a book's index -> EXPLAIN shows "Index Scan" instead of "Seq Scan".
               Composite (status, amount) helps "status = ?" and "status = ? AND amount > ?",
               not "amount > ?" alone (the leftmost-column rule). Costs: slower writes, more disk.
@@ -808,6 +854,8 @@ Q07 Indexes, ACID, isolation
 
 ```text
 D01 Two Sum: return the indices of the two numbers that add up to the target.
+  Story   : checking every pair is about 5 crore checks for 10,000 numbers -> but each number already
+            knows its partner (target - x) -> a HashMap finds that partner in one lookup: O(n)
   Idea    : for each number x, look for its partner (target - x) in a HashMap of the numbers seen so far.
   Picture : [200, 450, 700, 250], target 900
               200 -> need 700 -> not seen -> remember 200 at 0
@@ -832,6 +880,8 @@ D01 Two Sum: return the indices of the two numbers that add up to the target.
 
 ```text
 D02 Valid Anagram: do two strings use the same letters, the same number of times?
+  Story   : sorting puts every letter in order, O(n log n), but we only need counts -> only 26 letters
+            exist -> an int[26] tally: O(n) time, O(1) space -> any characters? use a HashMap
   Idea    : a tally in int[26]: +1 for each letter of s, -1 for each letter of t; all zero = anagram
   Picture : "listen" / "silent"   e i l n s t : +1 each, then -1 each -> all 0 -> true
             "rat" / "car"          c ends at -1, t ends at +1         -> false
@@ -853,6 +903,9 @@ D02 Valid Anagram: do two strings use the same letters, the same number of times
 
 ```text
 D03 Longest Substring Without Repeating Characters: the longest run with no repeated character.
+  Story   : brute force restarts at every position and re-reads the same letters, O(n^2) -> a repeat
+            breaks only the FRONT of the run -> keep the rest: a sliding window, left jumps past the
+            old copy, O(n)
   Idea    : a sliding window [left, right] that always holds unique characters, plus a map of each
             character's LAST position. On a repeat inside the window: left = max(left, last + 1).
   Picture : p w w k e w

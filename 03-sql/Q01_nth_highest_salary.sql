@@ -61,6 +61,22 @@
 
 
 -- ============================================================================
+-- WHY THIS TOOL EXISTS (the story, read it after your own try)
+-- ============================================================================
+-- Pain 1: MAX(salary) gives only the TOP salary. There is no "MAX number 2".
+-- Fix 1 : sort the salaries from the top and skip one: LIMIT 1 OFFSET 1.
+-- Pain 2: a tie at the top. Meera and Sneha both earn 90000, so "skip one"
+--         lands on the second 90000, not on 80000.
+-- Fix 2 : remove repeats first with DISTINCT, or give equal salaries the
+--         same rank number.
+-- Pain 3: before window functions, ranking meant a subquery that counts the
+--         bigger salaries for every row (Solution 3). It's slow and hard to read.
+-- Fix 3 : window functions (the SQL:2003 standard, PostgreSQL 8.4 in 2009).
+--         DENSE_RANK gives ties the same number with no gaps, so rank 2 is
+--         always the real 2nd highest: 80000.
+
+
+-- ============================================================================
 -- SOLUTION 1: DENSE_RANK (the best one to write in an interview)
 -- ============================================================================
 -- DENSE_RANK numbers the salaries from the top: equal salaries share a number,
@@ -212,6 +228,8 @@ SELECT (SELECT DISTINCT salary
 
 -- QUICK REVISION START
 -- Q01 Nth highest salary
+--   Story  : MAX gives only the top -> sort and skip one -> a tie at the top breaks "skip one" ->
+--            DISTINCT, or DENSE_RANK (window functions, SQL:2003) where ties share a number
 --   Best   : SELECT DISTINCT salary FROM (SELECT salary, DENSE_RANK() OVER (ORDER BY salary DESC) AS r
 --            FROM employees) x WHERE r = N
 --   Also   : SELECT DISTINCT salary FROM employees ORDER BY salary DESC LIMIT 1 OFFSET N-1

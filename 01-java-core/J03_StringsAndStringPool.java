@@ -5,6 +5,12 @@ import java.util.function.Supplier;
 /*
  * J03  Strings, the String pool, StringBuilder vs StringBuffer: a runnable demo
  *
+ * THE STORY (why these three classes exist)
+ *   Shared text must never change   -> String is immutable        (Java 1.0, 1996)
+ *   += in a loop copies everything  -> StringBuffer, with locks   (Java 1.0)
+ *   One thread doesn't need locks   -> StringBuilder, no locks    (Java 5, 2004)
+ *   So StringBuffer is the OLD one, and StringBuilder is today's default.
+ *
  * WHAT YOU WILL SEE (the numbers match J03_StringsAndStringPool.md)
  *   Step 1  toLowerCase() doesn't change "PAYU"; it makes a NEW String
  *   Step 2  two "PAYU" literals are ONE object (==  true); new String(...) is another (== false)

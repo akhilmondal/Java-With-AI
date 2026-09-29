@@ -4,7 +4,54 @@
 
 | ⏱️ Read | 🧪 Run | 🎯 Asked |
 |---|---|---|
-| 12 min | `java 01-java-core/J08_ComparatorStreamsOptional.java` | Every Java 8 round; it's also the base for the 8 stream programs (Part 2) |
+| 14 min | `java 01-java-core/J08_ComparatorStreamsOptional.java` | Every Java 8 round; it's also the base for the 8 stream programs (Part 2) |
+
+---
+
+## 🧬 Why does this exist? The story
+
+These four tools look unrelated, but they're one story: making everyday code **shorter and safer**.
+
+1. **❌ The pain:** Java can't sort a list of Employee objects by itself. It doesn't know who comes first.
+2. **✅ The fix (Java 1.2, 1998): `Comparable`.** The class states its own order in `compareTo`, for example by id.
+3. **❌ New pain:** a class gets only **one** natural order. HR wants employees by salary, and finance wants them by name.
+4. **✅ The fix (also Java 1.2): `Comparator`.** Any order, written outside the class. But each one needed a long anonymous class.
+5. **❌ New pain:** that boilerplate hid the one line that mattered. Loops for "filter, then transform, then collect" did the same.
+6. **✅ The fix (Java 8, 2014): lambdas, `Comparator.comparing()` and streams.** One readable line that says **what** you want, not **how** to loop.
+7. **❌ New pain:** methods returned `null` for "not found". Callers forgot to check and got a NullPointerException. Tony Hoare, who invented null references in 1965, later called them his "billion-dollar mistake".
+8. **✅ The fix (Java 8, 2014): `Optional`.** The return type itself says "this may be empty", so the caller has to decide: `orElse`, `orElseGet` or `orElseThrow`.
+
+**The same sort, before and after Java 8:**
+
+```java
+// Before Java 8: 6 lines to say "salary, high to low"
+Collections.sort(list, new Comparator<Employee>() {
+    @Override
+    public int compare(Employee a, Employee b) {
+        return Integer.compare(b.salary(), a.salary());
+    }
+});
+
+// Java 8: one line
+list.sort(Comparator.comparingInt(Employee::salary).reversed());
+```
+
+```mermaid
+flowchart TD
+    A["❌ Java can't sort Employees<br/>it doesn't know who comes first"] --> B["✅ Comparable: one built-in order<br/>(Java 1.2, 1998)"]
+    B --> C["❌ only ONE order per class<br/>HR wants salary, finance wants name"]
+    C --> D["✅ Comparator: any order, outside the class<br/>(Java 1.2), but 6 lines each"]
+    D --> E["❌ anonymous classes and loops<br/>hide the one line that matters"]
+    E --> F["✅ lambdas + streams: say WHAT, not HOW<br/>(Java 8, 2014)"]
+    F --> G["❌ null for #quot;not found#quot;<br/>NullPointerException everywhere"]
+    G --> H["✅ Optional: the type says #quot;may be empty#quot;<br/>(Java 8, 2014)"]
+```
+
+👀 **Notice:** Java 8 was the big jump. Lambdas, streams and Optional all arrived together, in 2014.
+
+🧠 **So it's not random:** Comparator removes "only one order", lambdas and streams remove the boilerplate, and Optional removes the forgotten null check.
+
+---
 
 The running example is four employees. They're **not** in id order on purpose:
 
@@ -215,7 +262,8 @@ findFirst -> Sneha (stopped early: Amit and Priya were never checked)
 - *Service companies:* Comparable vs Comparator, map vs flatMap, and intermediate vs terminal.
 - *Product companies:* **laziness** and short-circuiting, comparator chains with ties, the TreeSet trap, overflow in compareTo, orElse vs orElseGet, and when **not** to use parallel streams.
 
-**Say it in this order:**
+**Say it in this order** (start with the problem):
+0. **Why they exist:** a class has one natural order (Comparable), but you need many (Comparator). Java 8 lambdas and streams turned the old boilerplate into one line, and Optional replaced "return null".
 1. **Comparable** is the natural order inside the class (`compareTo`), one per class. **Comparator** is an external rule, you can have many, and you chain them with `comparing().reversed().thenComparing()`.
 2. A stream is **source + intermediate operations + one terminal operation**. The intermediate ones are **lazy**, the terminal one runs everything, and some **stop early**. You can use a stream only once.
 3. **map** is one-to-one. **flatMap** is one-to-many, flattened.
@@ -223,7 +271,7 @@ findFirst -> Sneha (stopped early: Amit and Priya were never checked)
 
 **Sample answer** (about a minute, in your own words):
 
-> "Comparable gives a class its natural order through compareTo, like employees by id, and there's only one. Comparator is an external rule, so I can have many, like salary descending then name, built with Comparator.comparing, reversed and thenComparing. A stream is a pipeline: intermediate operations like filter and map are lazy and only describe the work, and the terminal operation, like collect or findFirst, actually runs it. findFirst even stops early. map converts each element to one result, while flatMap converts each element to many and flattens them, like getting all skills from all employees. Optional is for return values that may be missing, like findById. I use map, orElse or orElseThrow instead of null checks, and orElseGet when the default is expensive, because orElse always evaluates it."
+> "Comparable gives a class its natural order through compareTo, like employees by id, and there's only one. Comparator is an external rule, so I can have many, like salary descending then name, built with Comparator.comparing, reversed and thenComparing. A stream is a pipeline: intermediate operations like filter and map are lazy and only describe the work, and the terminal operation, like collect or findFirst, actually runs it. findFirst even stops early. map converts each element to one result, while flatMap converts each element to many and flattens them, like getting all skills from all employees. Optional came in Java 8 so methods stop returning null. It's for return values that may be missing, like findById. I use map, orElse or orElseThrow instead of null checks, and orElseGet when the default is expensive, because orElse always evaluates it."
 
 **Product-company deep dive:**
 - **Q: Should compareTo agree with equals?**
@@ -288,11 +336,19 @@ Yes with orElse, because its argument is always evaluated. No with orElseGet, wh
 
 </details>
 
+<details><summary>7. Why did Java 8 add Optional? What was the pain?</summary>
+
+Methods returned null for "not found", and callers forgot to check, so they got NullPointerExceptions. An Optional return type makes "may be empty" visible, and the caller must choose orElse, orElseGet or orElseThrow.
+
+</details>
+
 If you get stuck on one, add it to [STUMBLE-LIST.md](../STUMBLE-LIST.md). When they all feel easy, tick J08 in the [README](../README.md) and send `next`.
 
 ---
 
 ## ⚡ Quick Revision (2 hours before the interview)
+
+**🧬 The story:** Java can't order objects → **Comparable** (Java 1.2, one order) → you need many orders → **Comparator** (1.2, but 6-line anonymous classes) → boilerplate hides the logic → **lambdas + streams** (Java 8) → `null` means forgotten checks and NPEs → **Optional** (Java 8).
 
 ```mermaid
 flowchart LR
@@ -319,6 +375,6 @@ flowchart LR
 **🔑 Memory hook:** *"The token on the card (Comparable) vs the doctor's rule for today (Comparator). The belt only moves when the last station asks (terminal). flatMap opens the boxes."*
 
 **🗣️ Say it aloud (no peeking):**
-1. Why did findFirst never check Amit and Priya?
-2. Show map vs flatMap with the skills example.
-3. When is orElse wasteful, and what do you use instead?
+1. Why do both Comparable and Comparator exist, and what pain did Optional fix?
+2. Why did findFirst never check Amit and Priya?
+3. Show map vs flatMap with the skills example. When is orElse wasteful, and what do you use instead?

@@ -7,6 +7,12 @@ import java.util.Set;
 /*
  * J02  equals() and hashCode(): a runnable demo
  *
+ * THE STORY (why there are TWO methods)
+ *   == can't see that two copies are the same employee -> equals(): you define "same"
+ *   Calling equals() on every entry is slow            -> hashCode(): pick the bucket first
+ *   The map uses both, so they must agree              -> the contract (Steps 2 to 5)
+ *   Writing both by hand goes wrong                    -> Objects.hash (Java 7), records (Java 16)
+ *
  * WHAT YOU WILL SEE (the numbers match J02_EqualsAndHashCode.md)
  *   Step 1  override nothing: two copies of employee 101 count as 2 employees
  *   Step 2  override only equals(): still 2, because the map never calls equals()

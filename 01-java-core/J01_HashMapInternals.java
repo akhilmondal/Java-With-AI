@@ -8,6 +8,12 @@ import java.util.TreeMap;
 /*
  * J01  How HashMap works inside: a runnable demo
  *
+ * THE STORY (why HashMap looks the way it does)
+ *   Searching a list checks items one by one -> hashing: jump to one bucket  (Hashtable, Java 1.0)
+ *   Hashtable locks every method             -> HashMap, no locks           (Java 1.2)
+ *   Threads sharing a HashMap lose entries   -> ConcurrentHashMap           (Java 5, see J05)
+ *   Too many keys in ONE bucket are slow     -> the bucket becomes a tree   (Java 8)
+ *
  * WHAT YOU WILL SEE (the numbers match J01_HashMapInternals.md)
  *   Step 1  put(101): 101 % 16 = 5, so the entry goes to bucket 5
  *   Step 2  get(101) goes straight to bucket 5 and never looks anywhere else

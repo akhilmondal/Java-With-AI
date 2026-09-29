@@ -57,6 +57,21 @@
 
 
 -- ============================================================================
+-- WHY THESE TOOLS EXIST (the story, read it after your own try)
+-- ============================================================================
+-- Pain 1: WHERE salary > AVG(salary) is an error. WHERE checks one row at a
+--         time, but an average needs a whole department of rows.
+-- Fix 1 : a correlated subquery works out the department's average for each
+--         row (Solution 1). It works, but it can run once per row.
+-- Pain 2: nested subqueries get hard to read, and the same average is
+--         worked out again and again.
+-- Fix 2 : a CTE (WITH) works out each department's average ONCE, gives it a
+--         name, and joins it back (Solution 2). Or a window function,
+--         AVG(salary) OVER (PARTITION BY department_id), writes the average
+--         next to every row without squashing them (Solution 3).
+
+
+-- ============================================================================
 -- SOLUTION 1: a correlated subquery (short, and easy to say out loud)
 -- ============================================================================
 -- For each employee e, the inner query works out the average of e's OWN
@@ -167,6 +182,8 @@ ORDER BY salary DESC, name;
 
 -- QUICK REVISION START
 -- Q03 Employees earning above their department's average
+--   Story    : WHERE can't use AVG (it checks one row at a time) -> correlated subquery (runs per row) ->
+--              CTE: each average once, joined back -> or AVG() OVER (PARTITION BY dept) on every row
 --   Averages : PAYMENTS 210000/3 = 70000 | BILLING 180000/3 = 60000 | UI 145000/2 = 72500
 --   Result   : Meera 90000, Priya 80000 (PAYMENTS), Sneha 90000 (BILLING), Neha 75000 (UI)
 --   Way 1    : WHERE e.salary > (SELECT AVG(salary) FROM employees e2 WHERE e2.department_id = e.department_id)

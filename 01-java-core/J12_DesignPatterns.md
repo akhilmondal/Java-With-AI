@@ -9,7 +9,47 @@
 
 | ⏱️ Read | 🧪 Run | 🎯 Asked |
 |---|---|---|
-| 12 min | `java 01-java-core/J12_DesignPatterns.java` | "Which patterns have you used?" is standard for 3 years of experience; "how does @Transactional work?" follows |
+| 14 min | `java 01-java-core/J12_DesignPatterns.java` | "Which patterns have you used?" is standard for 3 years of experience; "how does @Transactional work?" follows |
+
+---
+
+## 🧬 Why does this exist? The story
+
+In 1994, four authors (the "Gang of Four") wrote the book *Design Patterns*. They didn't invent these ideas. They noticed that teams kept hitting the **same problems** and solving them the **same way**, so they gave each fix a name. With a name, you can say "use a strategy" instead of explaining 50 lines.
+
+**Every pattern is one pain and its fix:**
+
+| Pattern | ❌ The pain | ✅ The fix |
+|---|---|---|
+| **Singleton** | two config objects or connection pools get created. They waste memory and can disagree with each other | exactly one shared instance |
+| **Builder** | `new PaymentRequest("TXN1001", 1500, "INR", "SETU", null, "electricity bill")`: which null is which? | set fields by name, then `build()` checks them |
+| **Factory** | `if (type == PAYU) new PayUGateway() else if ...` copied in 10 places | one place decides which class to create |
+| **Strategy** | a giant if-else of fee rules inside the payment method | each rule is its own class behind one interface |
+| **Proxy** | writing "begin transaction, commit, rollback" by hand in every service method | a stand-in wraps the real object and adds it around each call |
+
+**Even one pattern has its own story.** Singleton is the most asked, so here's how it grew:
+
+1. **❌ The pain:** two config objects waste memory and disagree.
+2. **✅ The fix: Singleton.** A private constructor, and the instance is created on first use.
+3. **❌ New pain:** two threads both see `null` and create **2** instances (the demo shows it).
+4. **✅ The fix: make `getInstance()` synchronized.**
+5. **❌ New pain:** now every call waits for the lock, even long after the instance exists.
+6. **✅ The fix: double-checked locking.** Skip the lock once the instance exists. It needs `volatile`, and it's only been reliable since Java 5.
+7. **❌ New pain:** it's easy to get wrong.
+8. **✅ The fix: a holder class or an enum.** The JVM itself guarantees one instance, with no locking code.
+
+```mermaid
+flowchart TD
+    A["❌ two config objects<br/>waste memory and disagree"] --> B["✅ Singleton: private constructor<br/>+ create on first use"]
+    B --> C["❌ two threads both see null<br/>2 instances (the demo)"]
+    C --> D["✅ synchronized getInstance()"]
+    D --> E["❌ every call waits for the lock<br/>even after it exists"]
+    E --> F["✅ double-checked locking<br/>+ volatile (reliable since Java 5)"]
+    F --> G["❌ easy to get wrong"]
+    G --> H["✅ holder class or enum<br/>the JVM guarantees one"]
+```
+
+🧠 **So it's not random:** a pattern is just a pain that kept coming back, plus the fix that worked. Learn the pain, and you'll remember the pattern. Spring then applies most of them for you (the table in Step 5).
 
 ---
 
@@ -213,6 +253,7 @@ int total = amount + fees.get(mode).fee(amount);
 - *Product companies:* **when** to use each one and its trade-offs, why `volatile` is needed in double-checked locking, how Spring applies patterns (proxies, factories), and the self-invocation bug.
 
 **Say it in this order** (pick 3 or 4, each as **problem → example**):
+0. **Why patterns exist:** the same problems kept coming back, so the proven fixes got names (the Gang of Four book, 1994). A name lets a team say "use a strategy" instead of explaining 50 lines.
 1. **Singleton:** one instance. It needs thread safety (holder, enum, or double-checked + volatile). Spring beans are already singletons.
 2. **Builder:** many optional fields, readable and validated in `build()`. Lombok's `@Builder`.
 3. **Factory:** hides which class gets created. Spring injects `Map<String, PaymentGateway>`.
@@ -282,11 +323,25 @@ Proxy. A self-invocation from inside the same class skips the proxy, so no trans
 
 </details>
 
+<details><summary>6. In one line each, what pain does each pattern fix: Singleton, Builder, Factory, Strategy, Proxy?</summary>
+
+Singleton: duplicate shared objects. Builder: unreadable constructor calls with many nulls. Factory: if-else creation code copied everywhere. Strategy: one giant if-else of rules. Proxy: the same before-and-after code (like transactions) written by hand in every method.
+
+</details>
+
+<details><summary>7. Why not just make getInstance() synchronized and stop there?</summary>
+
+It's correct, but every call waits for the lock, even after the instance exists. Double-checked locking skips the lock once it's created, and volatile stops threads seeing a half-built object. A holder class or an enum gets the same safety with no locking code.
+
+</details>
+
 If you get stuck on one, add it to [STUMBLE-LIST.md](../STUMBLE-LIST.md). When they all feel easy, tick J12 in the [README](../README.md) and send `next`.
 
 ---
 
 ## ⚡ Quick Revision (2 hours before the interview)
+
+**🧬 The story:** each pattern is a pain that kept coming back (named in the Gang of Four book, 1994). Duplicate shared objects → **Singleton** · constructor calls full of nulls → **Builder** · if-else creation in 10 places → **Factory** · one giant if-else of rules → **Strategy** · transaction code by hand in every method → **Proxy**. Singleton's own story: 2 threads make 2 → synchronized → every call waits → double-checked + volatile → **holder / enum**.
 
 ```mermaid
 flowchart LR
@@ -317,6 +372,6 @@ flowchart LR
 **🔑 Memory hook:** *"The RBI governor (one), a Subway order (build step by step), the rental counter (you ask, it picks), Google Maps modes (swap the rule), a personal assistant (before and after the meeting)."*
 
 **🗣️ Say it aloud (no peeking):**
-1. Show why a lazy singleton breaks with two threads, and give two fixes.
-2. Factory vs Strategy, with the payment example.
+1. For each of the 5 patterns, say the pain it fixes in one line. Then Factory vs Strategy, with the payment example.
+2. Show why a lazy singleton breaks with two threads, and walk the fixes up to the enum.
 3. How does @Transactional work, and what is the self-invocation problem?

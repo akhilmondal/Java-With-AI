@@ -10,6 +10,14 @@ import java.util.function.Supplier;
  * J11  Modern Java (8 to 21): lambdas, var, text blocks, switch expressions,
  *      records, sealed types, pattern matching, virtual threads: a runnable demo
  *
+ * THE STORY (every feature removed one pain)
+ *   6-line anonymous class for 1 line of logic -> lambdas             (Java 8)
+ *   A forgotten break falls through            -> switch expressions  (Java 14)
+ *   JSON strings full of \" and \n             -> text blocks         (Java 15)
+ *   40-line DTOs                               -> records             (Java 16)
+ *   Anyone can add a subtype                   -> sealed types        (Java 17)
+ *   One heavy OS thread per waiting request    -> virtual threads     (Java 21)
+ *
  * WHAT YOU WILL SEE (the numbers match J11_ModernJavaFeatures.md)
  *   Step 1  lambdas: Predicate finds the one large payment (TXN4, 15000); FeeRule 2% on 1000 = 20
  *   Step 2  var, a text block (JSON), and Java 11 String helpers

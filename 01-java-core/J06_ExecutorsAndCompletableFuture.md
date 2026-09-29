@@ -4,7 +4,37 @@
 
 | ⏱️ Read | 🧪 Run | 🎯 Asked |
 |---|---|---|
-| 12 min | `java 01-java-core/J06_ExecutorsAndCompletableFuture.java` | Every Spring/backend round: "How do you call 3 services in parallel?" |
+| 14 min | `java 01-java-core/J06_ExecutorsAndCompletableFuture.java` | Every Spring/backend round: "How do you call 3 services in parallel?" |
+
+---
+
+## 🧬 Why does this exist? The story
+
+Java has four ways to run work in parallel, and each came from the pain of the one before:
+
+1. **❌ The pain:** calling 3 billers one after another takes **900 ms** (3 × 300 ms), even though the calls don't depend on each other.
+2. **✅ The fix (Java 1.0, 1996): `new Thread()`** for each call, so the calls run at the same time.
+3. **❌ New pain:** every thread costs memory (its own stack, often about 1 MB) and time to create. 10,000 requests would mean 10,000 threads, and the server falls over. Also, a thread returns nothing, so getting the result back meant shared variables and messy waiting code.
+4. **✅ The fix (Java 5, 2004): `ExecutorService`, `Callable` and `Future`.** A small pool of **reused** threads with a task queue. `submit()` gives you a Future, a token for the result.
+5. **❌ New pain:** `Future.get()` **blocks**: your thread stands at the counter and waits. "When A finishes, do B" or "combine A and B" meant writing your own waiting code.
+6. **✅ The fix (Java 8, 2014): `CompletableFuture`.** Chain the next step (`thenApply`), combine calls (`thenCombine`, `allOf`) and add fallbacks (`exceptionally`), with **no waiting**. Java 9 added timeouts (`orTimeout`, `completeOnTimeout`).
+7. **❌ New pain:** pool threads are still heavy OS threads. A thread blocked on an HTTP call just sits there, so 200 pool threads can serve only about 200 waiting calls at once. And async chains are harder to read and debug than plain code.
+8. **✅ The fix (Java 21, 2023): virtual threads.** Threads so cheap you can have lakhs of them, so simple blocking code scales again. That's in J11.
+
+```mermaid
+flowchart TD
+    A["❌ 3 biller calls one by one<br/>900 ms"] --> B["✅ new Thread() per call<br/>(Java 1.0)"]
+    B --> C["❌ threads are costly: 10,000 requests<br/>= 10,000 threads, and no result back"]
+    C --> D["✅ ExecutorService pool + Future<br/>(Java 5, 2004)"]
+    D --> E["❌ Future.get() blocks<br/>combining results is manual"]
+    E --> F["✅ CompletableFuture: chain, combine,<br/>fallback, no waiting (Java 8, 2014)"]
+    F --> G["❌ pool threads are still heavy<br/>a blocked thread just waits"]
+    G --> H["✅ virtual threads (Java 21, 2023)<br/>see J11"]
+```
+
+👀 **Notice:** each fix keeps the good part of the last one. Pools keep threads' parallelism, CompletableFuture keeps the pool, and virtual threads keep the simple code.
+
+🧠 **So it's not random:** the whole story is about two costs, **threads are expensive** and **waiting wastes them**. Every new tool cuts one of them.
 
 ---
 
@@ -204,16 +234,16 @@ thenCompose: PAY-WATER-450
 - *Service companies:* why pools, Runnable vs Callable, and what Future.get does.
 - *Product companies:* CompletableFuture composition (thenCompose vs thenApply, allOf, exceptionally, timeouts), which pool runs what, pool sizing, bounded queues and rejection policies, and virtual threads (J11).
 
-**Say it in this order:**
-1. A thread per task is expensive, so use a **pool**. With 3 threads, 3 × 300 ms calls take 300 ms instead of 900.
+**Say it in this order** (start with the problem):
+1. **The problem:** calls one by one add up (900 ms), and a new thread per task is expensive. So use a **pool** (Java 5). With 3 threads, 3 × 300 ms calls take 300 ms instead of 900.
 2. `submit` returns a **Future**. `get()` blocks, and `get(timeout)` gives up. Callable returns a value; Runnable doesn't.
-3. **CompletableFuture** chains without blocking (`thenApply`, `thenAccept`), combines (`thenCombine`, `allOf`), handles errors (`exceptionally`, `handle`) and adds timeouts (`orTimeout`, `completeOnTimeout`).
+3. **CompletableFuture** (Java 8) removes that waiting: it chains without blocking (`thenApply`, `thenAccept`), combines (`thenCombine`, `allOf`), handles errors (`exceptionally`, `handle`) and adds timeouts (`orTimeout`, `completeOnTimeout`).
 4. `thenCompose` is for a next step that is itself async, so you don't get a future inside a future.
 5. Pass your **own executor** for blocking I/O, and always **shut down** the pool.
 
 **Sample answer** (about a minute, in your own words):
 
-> "Creating a thread per task is expensive, so I use an ExecutorService, a pool of reusable threads. If I need bills from three billers and each call takes 300 ms, doing them one by one takes 900 ms, but with a pool of three they run in parallel in about 300 ms. submit gives me a Future, but get blocks, and combining several futures is manual. CompletableFuture fixes that: supplyAsync to fetch, thenApply to add the fee, thenAccept to use the result, without blocking. thenCombine joins two parallel calls, allOf waits for many, exceptionally gives a fallback if a biller is down, and completeOnTimeout handles a slow biller. For blocking I/O I pass my own executor, and I always shut the pool down."
+> "Creating a thread per task is expensive, so I use an ExecutorService, a pool of reusable threads. If I need bills from three billers and each call takes 300 ms, doing them one by one takes 900 ms, but with a pool of three they run in parallel in about 300 ms. submit gives me a Future, but get blocks, and combining several futures is manual. Java 8's CompletableFuture fixes that: supplyAsync to fetch, thenApply to add the fee, thenAccept to use the result, without blocking. thenCombine joins two parallel calls, allOf waits for many, exceptionally gives a fallback if a biller is down, and completeOnTimeout handles a slow biller. For blocking I/O I pass my own executor, and I always shut the pool down."
 
 **Product-company deep dive:**
 - **Q: How many threads should a pool have?**
@@ -284,11 +314,19 @@ The default is the shared ForkJoinPool.commonPool(), sized to the CPU cores. Blo
 
 </details>
 
+<details><summary>7. Java 5 already had Future. Why was CompletableFuture added in Java 8?</summary>
+
+Future.get() blocks the thread, and there was no way to say "when this finishes, do that" or to combine two results without writing your own waiting code. CompletableFuture chains and combines steps without blocking.
+
+</details>
+
 If you get stuck on one, add it to [STUMBLE-LIST.md](../STUMBLE-LIST.md). When they all feel easy, tick J06 in the [README](../README.md) and send `next`.
 
 ---
 
 ## ⚡ Quick Revision (2 hours before the interview)
+
+**🧬 The story:** calls one by one are slow → **new Thread()** per task (Java 1.0) → threads are costly and return nothing → **ExecutorService + Future** (Java 5) → `get()` blocks, and combining is manual → **CompletableFuture** (Java 8) → pool threads are still heavy while they wait → **virtual threads** (Java 21).
 
 ```mermaid
 flowchart LR
@@ -318,6 +356,6 @@ flowchart LR
 **🔑 Memory hook:** *"A food court: cooks are threads, the token is a Future, and the buzzer with instructions is a CompletableFuture. 3 cooks, 3 orders, done in one round."*
 
 **🗣️ Say it aloud (no peeking):**
-1. How long do 5 calls of 300 ms take on 2 threads, and why?
+1. Why did Java go from new Thread() to pools, then to CompletableFuture, then to virtual threads? And how long do 5 calls of 300 ms take on 2 threads?
 2. thenApply vs thenCompose, with an example.
 3. How do you handle one of three billers being down?

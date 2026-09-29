@@ -4,7 +4,54 @@
 
 | ⏱️ Read | 🧪 Run | 🎯 Asked |
 |---|---|---|
-| 12 min | `java 02-java8-streams/S00_StreamsToolkit.java` | The live-coding part of most Java rounds. Practice in [S01](S01_StreamPractice.java) |
+| 14 min | `java 02-java8-streams/S00_StreamsToolkit.java` | The live-coding part of most Java rounds. Practice in [S01](S01_StreamPractice.java) |
+
+---
+
+## 🧬 Why does this exist? The story
+
+Every collector below exists because the loop version was long and easy to get wrong.
+
+1. **❌ The pain (before Java 8):** "count payments per status" took a loop with a map, a `get`, a null check and a `put`.
+2. **✅ The fix (Java 8, 2014): streams and `groupingBy`.** One line puts every payment into its bin.
+3. **❌ New pain:** a map of **lists** is rarely the answer. You want the count, the total or the biggest per bin.
+4. **✅ The fix (Java 8): downstream collectors.** The 2nd argument of groupingBy: `counting()`, `summingInt()`, `maxBy()`, `mapping()`.
+5. **❌ New pain:** `maxBy` leaves an `Optional[...]` in every bin, which is ugly in the result.
+6. **✅ The fix: `collectingAndThen(maxBy(...), Optional::get)`** unwraps it in the same step.
+7. **❌ New pain:** `toMap` crashes when a key repeats, like a gateway callback that arrives twice.
+8. **✅ The fix: a merge function,** toMap's 3rd argument, which says which value to keep.
+
+**The same count, before and after Java 8:**
+
+```java
+// Before Java 8: a loop, a map and a null check
+Map<String, Integer> countByStatus = new HashMap<>();
+for (Payment p : payments) {
+    Integer old = countByStatus.get(p.status());
+    countByStatus.put(p.status(), old == null ? 1 : old + 1);
+}
+
+// Java 8: one collect
+Map<String, Long> countByStatus = payments.stream()
+        .collect(Collectors.groupingBy(Payment::status, Collectors.counting()));
+```
+
+```mermaid
+flowchart TD
+    A["❌ count per status = a loop<br/>with get, null check and put"] --> B["✅ streams + groupingBy<br/>(Java 8, 2014)"]
+    B --> C["❌ a map of lists isn't the answer<br/>you want the count, sum or max"]
+    C --> D["✅ downstream collectors<br/>counting, summingInt, maxBy"]
+    D --> E["❌ maxBy leaves Optional[...]<br/>in every bin"]
+    E --> F["✅ collectingAndThen(maxBy, Optional::get)"]
+    F --> G["❌ toMap crashes on a repeated key<br/>(a callback that arrives twice)"]
+    G --> H["✅ a merge function:<br/>(first, second) -> first"]
+```
+
+👀 **Notice:** later versions kept adding small helpers: `filtering` and `flatMapping` (Java 9), `teeing` (Java 12) and `Stream.toList()` (Java 16).
+
+🧠 **So it's not random:** every collector answers one question the loop made you code by hand: how many, how much, which is biggest, which two groups, and what if a key repeats.
+
+---
 
 This is your **look-up sheet** for the practice file. Learn the tools on these six payments, then write the 8 programs yourself in S01. Come back only after 10 minutes stuck.
 
@@ -194,7 +241,7 @@ flowchart LR
 
 **Sample answer** (simple words):
 
-> "I stream the payments and collect with groupingBy on status, which gives a map from status to its payments. For counts I pass counting() as the downstream collector, and for totals, summingInt on amount. For the biggest payment per status I use maxBy with a comparator, which returns an Optional, so I wrap it in collectingAndThen with Optional::get. For just two groups, like above or below 1,000, partitioningBy is cleaner. And when I build a map with toMap I remember it throws on duplicate keys, so I give it a merge function."
+> "Before Java 8 this was a loop with a map and null checks. Now I stream the payments and collect with groupingBy on status, which gives a map from status to its payments. For counts I pass counting() as the downstream collector, and for totals, summingInt on amount. For the biggest payment per status I use maxBy with a comparator, which returns an Optional, so I wrap it in collectingAndThen with Optional::get. For just two groups, like above or below 1,000, partitioningBy is cleaner. And when I build a map with toMap I remember it throws on duplicate keys, so I give it a merge function."
 
 ---
 
@@ -245,11 +292,19 @@ It throws IllegalStateException: Duplicate key TXN1. Add (first, second) -> firs
 
 </details>
 
+<details><summary>6. Why do downstream collectors exist? What would you do without them?</summary>
+
+groupingBy alone gives a map of lists. To get counts, totals or the biggest per group, you'd loop over every list again. A downstream collector works it out in the same pass: counting(), summingInt(), maxBy().
+
+</details>
+
 When they all feel easy, tick S00 in the [README](../README.md) and open [S01_StreamPractice.java](S01_StreamPractice.java).
 
 ---
 
 ## ⚡ Quick Revision (2 hours before the interview)
+
+**🧬 The story:** counting per group took a loop with null checks → **groupingBy** (Java 8) → a map of lists isn't the answer → **downstream collectors** (counting, summingInt, maxBy) → maxBy leaves Optionals → **collectingAndThen** → toMap crashes on a repeated key → **merge function**.
 
 ```mermaid
 flowchart LR
@@ -283,6 +338,6 @@ flowchart LR
 **🔑 Memory hook:** *"The post office: groupingBy makes the bins, and the downstream writes the label: count, sum or heaviest. Partitioning is just Yes and No. toMap is the register: decide what to do if a number repeats."*
 
 **🗣️ Say it aloud (no peeking):**
-1. Write the "highest paid per department" collector from memory.
+1. Why does groupingBy need a downstream collector? Then write the "highest paid per department" collector from memory.
 2. What goes wrong with toMap on a callback log, and how do you fix it?
 3. How do you get a character-frequency map in first-seen order?

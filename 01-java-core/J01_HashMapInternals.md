@@ -4,7 +4,37 @@
 
 | ⏱️ Read | 🧪 Run | 🎯 Asked |
 |---|---|---|
-| 12 min | `java 01-java-core/J01_HashMapInternals.java` | Almost every Java round. Product companies go deep into collisions, resize and treeify |
+| 14 min | `java 01-java-core/J01_HashMapInternals.java` | Almost every Java round. Product companies go deep into collisions, resize and treeify |
+
+---
+
+## 🧬 Why does this exist? The story
+
+Every part of HashMap was added to kill one specific pain. Here's the story, in the order it happened:
+
+1. **❌ The pain:** you keep 1 lakh employees in a list. To find employee 101, you check them one by one: up to **1,00,000 checks** for every search.
+2. **✅ The fix (Java 1.0, 1996): hashing, in `Hashtable`.** Turn the key into a number, and jump straight to one bucket, like opening one drawer. About **1 check** instead of 1 lakh.
+3. **❌ New pain:** Hashtable put a **lock** (`synchronized`) on every method. Most maps are used by one thread, so everyone paid for locks they didn't need.
+4. **✅ The fix (Java 1.2, 1998): `HashMap`.** The same idea, with no locks. It also allows one null key.
+5. **❌ New pain:** when many threads share one HashMap, entries get lost. And Hashtable made threads wait in one line, because its lock covers the whole map.
+6. **✅ The fix (Java 5, 2004): `ConcurrentHashMap`.** Many threads can work at the same time, safely. That story is in J05.
+7. **❌ New pain:** many keys can land in **one** bucket. A bad hashCode can do it, and in 2011 researchers showed that attackers could do it on purpose by sending keys that all collide ("hash flooding"). A bucket with 1,000 keys means up to 1,000 checks again.
+8. **✅ The fix (Java 8, 2014): a crowded bucket becomes a sorted tree.** Finding one of those 1,000 keys now takes about **10** checks.
+
+```mermaid
+flowchart TD
+    A["❌ a list of 1 lakh employees<br/>up to 1,00,000 checks per search"] --> B["✅ hashing: jump to one bucket<br/>Hashtable (Java 1.0, 1996)"]
+    B --> C["❌ a lock on every method<br/>wasted when one thread uses it"]
+    C --> D["✅ HashMap: same idea, no locks<br/>(Java 1.2, 1998)"]
+    D --> E["❌ threads sharing a HashMap<br/>lose entries"]
+    E --> F["✅ ConcurrentHashMap<br/>(Java 5, 2004), see J05"]
+    F --> G["❌ many keys in ONE bucket<br/>bad hashCode or an attack"]
+    G --> H["✅ a crowded bucket becomes a tree<br/>(Java 8, 2014)"]
+```
+
+👀 **Notice:** it's the same "**safe first, fast later**" pattern as StringBuffer → StringBuilder in J03: Hashtable (locked) came first, and HashMap (no locks) came later.
+
+🧠 **So it's not random:** hashing kills the slow search, removing locks kills the wasted time, and trees kill the long bucket. Each step below is one of these fixes.
 
 ---
 
@@ -230,16 +260,17 @@ In Step 6, the real HashMap's print order changes from `[5, 21, 37, …]` to `[5
 - *Service companies:* buckets, hashCode + equals, collisions, O(1), the load factor.
 - *Product companies:* why 0.75 and why a power of two, the treeify conditions (8 **and** 64) and why, what resize costs, what a bad hashCode does, immutable keys, and thread safety.
 
-**Say it in this order:**
-1. It's an **array of buckets**, 16 by default.
-2. `put`: hashCode → **bucket index** → store the entry.
-3. **Collision:** the entries are chained in that bucket, and `equals()` finds or replaces the right one.
-4. **Java 8:** more than 8 entries in a bucket, with 64+ buckets, turns it into a **red-black tree**. Below 64 buckets it resizes instead.
-5. At **75%** full it **doubles** and moves the entries. `get` follows the same path, so both are **O(1)** on average.
+**Say it in this order** (start with the problem):
+1. **Why it exists:** searching a list checks items one by one. HashMap **calculates** where a key lives, so it jumps straight there.
+2. It's an **array of buckets**, 16 by default.
+3. `put`: hashCode → **bucket index** → store the entry.
+4. **Collision:** the entries are chained in that bucket, and `equals()` finds or replaces the right one.
+5. **Java 8:** more than 8 entries in a bucket, with 64+ buckets, turns it into a **red-black tree**, so a crowded bucket stays fast. Below 64 buckets it resizes instead.
+6. At **75%** full it **doubles** and moves the entries. `get` follows the same path, so both are **O(1)** on average.
 
 **Sample answer** (about a minute, in your own words):
 
-> "HashMap is basically an array of buckets, 16 by default. When I put a key, Java calls hashCode on it and converts it into a bucket number. Say key 101 lands in bucket 5, so it's stored there. If I then put key 117 and it also lands in bucket 5, that's a collision: both entries stay in bucket 5 as a linked list, and get(117) uses equals to find the right one. From Java 8, if one bucket gets more than 8 entries and the map has at least 64 buckets, that list becomes a red-black tree, so search stays fast. And when the map is 75% full, which is 12 entries for 16 buckets, it doubles to 32 and moves the entries. That's why get and put are O(1) on average."
+> "Searching a list means checking items one by one, and HashMap avoids that by calculating where each key lives. It's basically an array of buckets, 16 by default. When I put a key, Java calls hashCode on it and converts it into a bucket number. Say key 101 lands in bucket 5, so it's stored there. If I then put key 117 and it also lands in bucket 5, that's a collision: both entries stay in bucket 5 as a linked list, and get(117) uses equals to find the right one. From Java 8, if one bucket gets more than 8 entries and the map has at least 64 buckets, that list becomes a red-black tree, so search stays fast. And when the map is 75% full, which is 12 entries for 16 buckets, it doubles to 32 and moves the entries. That's why get and put are O(1) on average."
 
 **Product-company deep dive:**
 - **Q: What's the worst-case complexity?**
@@ -270,7 +301,7 @@ You get `ConcurrentModificationException`. Use `iterator.remove()` or `map.entry
 It's a HashMap inside. Your element is the key, and a dummy object is the value.
 
 **HashMap vs Hashtable?**
-Hashtable is old. Every method is synchronized, which makes it slow, and it allows no null key or value. Use HashMap, or ConcurrentHashMap when threads share the map.
+Hashtable is the old one (Java 1.0). Every method is synchronized, which makes it slow, and it allows no null key or value. HashMap (Java 1.2) took the locks out, because most maps are used by one thread. Use HashMap, or ConcurrentHashMap when threads share the map.
 
 **I'll store 1,000 entries. How do I avoid resizing?**
 Give it an initial capacity: `new HashMap<>(1334)`, because 1000 / 0.75 ≈ 1334. On Java 19+, `HashMap.newHashMap(1000)` does the math for you.
@@ -321,11 +352,19 @@ get() calculates a different bucket and returns null. The entry is still inside,
 
 </details>
 
+<details><summary>8. Why did Java 8 add trees to HashMap? What was the pain?</summary>
+
+Many keys could land in one bucket, from a bad hashCode or from attackers sending keys that all collide ("hash flooding"). That bucket became a long list, and get() checked keys one by one again. A tree finds one of 1,000 keys in about 10 checks.
+
+</details>
+
 If you get stuck on one, add it to [STUMBLE-LIST.md](../STUMBLE-LIST.md). When they all feel easy, tick J01 in the [README](../README.md) and send `next`.
 
 ---
 
 ## ⚡ Quick Revision (2 hours before the interview)
+
+**🧬 The story:** searching a list is slow → hashing, **Hashtable** (Java 1.0, locked) → locks wasted on one thread → **HashMap** (1.2, no locks) → unsafe when threads share it → **ConcurrentHashMap** (5) → too many keys in one bucket is slow again → **trees** in crowded buckets (Java 8).
 
 ```mermaid
 flowchart LR
@@ -351,11 +390,11 @@ flowchart LR
 - The resize happens past **75%**, not at 100%.
 - The same hashCode doesn't mean the same key.
 
-**🎯 30-second answer:** "HashMap is an array of buckets. put calls hashCode, turns it into a bucket index and stores the entry. Keys that collide are chained in the bucket, and equals finds the right one. In Java 8 a bucket with more than 8 entries becomes a red-black tree once there are 64+ buckets. At 75% full it doubles and moves the entries, so get and put stay O(1) on average."
+**🎯 30-second answer:** "Searching a list checks items one by one, so HashMap calculates where each key lives instead. It's an array of buckets. put calls hashCode, turns it into a bucket index and stores the entry. Keys that collide are chained in the bucket, and equals finds the right one. In Java 8 a bucket with more than 8 entries becomes a red-black tree once there are 64+ buckets. At 75% full it doubles and moves the entries, so get and put stay O(1) on average."
 
 **🔑 Memory hook:** *"Hash picks the drawer, equals picks the file. At 3/4 full, double the cupboard. More than 8 in a drawer with 64 drawers, and it becomes a tree."*
 
 **🗣️ Say it aloud (no peeking):**
-1. Keys 101 and 117 go into 16 buckets: where do they go, and why?
-2. Where does 117 go after the resize to 32, and when exactly does that resize happen?
+1. Why does HashMap exist, why did it replace Hashtable, and what pain made Java 8 add trees?
+2. Keys 101 and 117 go into 16 buckets. Where do they go, where does 117 go after the resize to 32, and when exactly does that resize happen?
 3. Why does a crowded bucket in a 16-bucket map cause a resize and not a tree?

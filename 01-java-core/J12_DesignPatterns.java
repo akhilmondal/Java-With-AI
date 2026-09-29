@@ -5,6 +5,15 @@ import java.util.concurrent.atomic.AtomicInteger;
 /*
  * J12  Design patterns: Singleton, Builder, Factory, Strategy (+ Proxy): a runnable demo
  *
+ * THE STORY (every pattern is a pain that kept coming back)
+ *   Two config objects waste memory             -> Singleton
+ *   new X("TXN1001", 1500, null, null, ...)     -> Builder
+ *   if-else creation copied in 10 places        -> Factory
+ *   One giant if-else of fee rules              -> Strategy
+ *   Transaction code by hand in every method    -> Proxy (how @Transactional works)
+ *   Singleton's own story: 2 threads make 2 -> synchronized -> every call waits
+ *   -> double-checked locking + volatile -> holder class or enum
+ *
  * WHAT YOU WILL SEE (the numbers match J12_DesignPatterns.md)
  *   Step 1  Singleton: a lazy version with no locking creates 2 instances; the safe ones create 1
  *   Step 2  Builder: required fields first, optional ones by name, build() validates

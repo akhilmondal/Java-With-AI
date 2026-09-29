@@ -10,6 +10,12 @@ import java.util.stream.Stream;
 /*
  * J08  Comparable vs Comparator, streams (map/flatMap, lazy), Optional: a runnable demo
  *
+ * THE STORY (why these tools exist)
+ *   Java can't order objects by itself       -> Comparable: one built-in order  (Java 1.2)
+ *   One order isn't enough                   -> Comparator: any order, outside  (Java 1.2)
+ *   Anonymous classes and loops are noisy    -> lambdas + streams               (Java 8)
+ *   null for "not found" causes NPEs         -> Optional                        (Java 8)
+ *
  * WHAT YOU WILL SEE (the numbers match J08_ComparatorStreamsOptional.md)
  *   Step 1  Comparable: the natural order, by id: Rahul, Priya, Amit, Sneha
  *   Step 2  Comparator: salary high->low, then name: Priya, Sneha, Amit, Rahul;

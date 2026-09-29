@@ -4,7 +4,37 @@
 
 | ⏱️ Read | 🧪 Run | 🎯 Asked |
 |---|---|---|
-| 12 min | `java 01-java-core/J05_ConcurrencyBasics.java` | Every backend round. Payments interviews love "two requests debit at the same time" |
+| 14 min | `java 01-java-core/J05_ConcurrencyBasics.java` | Every backend round. Payments interviews love "two requests debit at the same time" |
+
+---
+
+## 🧬 Why does this exist? The story
+
+Why does Java have so many tools for threads? Each one fixed the pain the one before it left behind:
+
+1. **❌ The pain:** two threads run `count++` on one counter. It's really 3 steps (read, add, write), so the steps overlap and updates get lost. 2 × 100,000 gave about **134,000**.
+2. **✅ The fix (Java 1.0, 1996): `synchronized`.** A lock: only one thread at a time runs that code. Exactly **200,000**.
+3. **❌ New pain:** a lock is heavy for something tiny, like a stop flag. And with no lock at all, a thread may keep reading its own **old cached copy** of the flag and never stop.
+4. **✅ The fix: `volatile`.** Every read sees the latest write. The keyword was in Java 1.0, but its rules were only made clear and reliable in **Java 5 (2004)**.
+5. **❌ New pain:** volatile doesn't fix `count++` (still 3 steps). And synchronized makes every other thread **wait**.
+6. **✅ The fix (Java 5, 2004): `AtomicInteger`.** It uses a CPU instruction, compare-and-set: "write 6 only if it's still 5, otherwise retry". Nothing is lost, and no thread waits.
+7. **❌ New pain:** shared maps. HashMap loses entries with 2 threads. Hashtable and `synchronizedMap` are safe, but one lock covers the **whole map**, so every thread waits in one line.
+8. **✅ The fix (Java 5, 2004): `ConcurrentHashMap`.** It locks only a small part (since Java 8, one bucket), and reads don't lock at all. Many threads work at the same time.
+
+```mermaid
+flowchart TD
+    A["❌ count++ from 2 threads loses updates<br/>134,000 instead of 200,000"] --> B["✅ synchronized: one thread at a time<br/>(Java 1.0)"]
+    B --> C["❌ a lock is heavy for a flag<br/>without it, threads read old values"]
+    C --> D["✅ volatile: always see the latest value<br/>(rules made reliable in Java 5)"]
+    D --> E["❌ volatile can't fix count++<br/>and locks make threads wait"]
+    E --> F["✅ AtomicInteger: compare-and-set, no lock<br/>(Java 5, 2004)"]
+    F --> G["❌ one lock for a whole map<br/>makes every thread queue up"]
+    G --> H["✅ ConcurrentHashMap: lock one bucket<br/>(Java 5, 2004)"]
+```
+
+👀 **Notice:** Java 5 brought the whole `java.util.concurrent` package (atomics, ConcurrentHashMap, thread pools). Before it, `synchronized` was almost the only tool.
+
+🧠 **So it's not random:** every tool is "safe, but with less waiting" than the one before. Java 8 added one last piece: `merge()` and `compute()`, which do "read then update" as one safe step (Step 6).
 
 ---
 
@@ -218,16 +248,16 @@ AtomicInteger: 200000 (expected 200000)
 - *Service companies:* synchronized vs volatile, and why HashMap isn't thread-safe.
 - *Product companies:* **atomicity vs visibility**, CAS, how ConcurrentHashMap achieves concurrency (Java 7 segments vs Java 8 per-bucket locks), compound actions, deadlocks, and designing a safe payment counter or duplicate guard.
 
-**Say it in this order:**
-1. `count++` is read-add-write, so two threads can interleave and lose updates. That's a **race condition**.
-2. **synchronized:** one thread at a time, plus visibility.
-3. **volatile:** only visibility, so it's for flags, not counters. For counters, use **AtomicInteger** (CAS).
-4. **HashMap** isn't safe. **synchronizedMap** uses one lock. **ConcurrentHashMap** locks per bucket and reads without locks, so it scales. No nulls.
+**Say it in this order** (start with the problem):
+1. **The problem:** `count++` is read-add-write, so two threads can interleave and lose updates. That's a **race condition**.
+2. **synchronized (Java 1.0):** one thread at a time, plus visibility. The cost: other threads wait.
+3. **volatile:** only visibility, so it's for flags, not counters. For counters, use **AtomicInteger** (Java 5): CAS, no lock.
+4. **HashMap** isn't safe. **synchronizedMap** uses one lock, so threads queue up. **ConcurrentHashMap** (Java 5) locks per bucket and reads without locks, so it scales. No nulls.
 5. Even with ConcurrentHashMap, **get-then-put isn't atomic**, so use `merge`, `compute` or `putIfAbsent`.
 
 **Sample answer** (about a minute, in your own words):
 
-> "count++ is actually three steps: read, add and write. So two threads can both read 5 and both write 6, and one update is lost. synchronized fixes that by letting only one thread into the block at a time, and it also makes the changes visible to the next thread. volatile only solves visibility: a thread always sees the latest value, which is right for a stop flag but doesn't make count++ atomic. For counters I'd use AtomicInteger, which uses compare-and-set without locking. For maps, HashMap isn't thread-safe. Collections.synchronizedMap is safe but uses one lock for everything. ConcurrentHashMap locks only the bucket being updated and doesn't lock for reads, so it scales much better. One catch: get followed by put is still not atomic, so I use merge or computeIfAbsent, for example when counting payment statuses."
+> "count++ is actually three steps: read, add and write. So two threads can both read 5 and both write 6, and one update is lost. synchronized fixes that by letting only one thread into the block at a time, and it also makes the changes visible to the next thread. volatile only solves visibility: a thread always sees the latest value, which is right for a stop flag but doesn't make count++ atomic. For counters I'd use AtomicInteger, which Java 5 added for exactly this: it uses compare-and-set without locking. For maps, HashMap isn't thread-safe. Collections.synchronizedMap is safe but uses one lock for everything, so threads queue up. ConcurrentHashMap, also from Java 5, locks only the bucket being updated and doesn't lock for reads, so it scales much better. One catch: get followed by put is still not atomic, so I use merge or computeIfAbsent, for example when counting payment statuses."
 
 **Product-company deep dive:**
 - **Q: How did ConcurrentHashMap work in Java 7 vs Java 8?**
@@ -249,7 +279,7 @@ AtomicInteger: 200000 (expected 200000)
 A synchronized method locks `this` (or the class, if static) for the whole method. A block can lock a smaller piece of code, or a different object, so threads wait less.
 
 **Hashtable vs ConcurrentHashMap?**
-Hashtable locks the whole table for every call, like synchronizedMap. ConcurrentHashMap is the modern choice.
+Hashtable (Java 1.0) locks the whole table for every call, like synchronizedMap. ConcurrentHashMap (Java 5) was built to remove that queue. It's the modern choice.
 
 **Where does this show up in payments?**
 If it's true for you: status counters, in-memory caches of biller details, and a quick duplicate-callback guard with `putIfAbsent(txnId, true)`.
@@ -294,11 +324,19 @@ ConcurrentHashMap, because it locks per bucket.
 
 </details>
 
+<details><summary>7. Java already had synchronized. Why did Java 5 add AtomicInteger and ConcurrentHashMap?</summary>
+
+synchronized makes every other thread wait. AtomicInteger counts safely without a lock, using compare-and-set. ConcurrentHashMap lets many threads use one map at the same time, because it locks one bucket instead of the whole map.
+
+</details>
+
 If you get stuck on one, add it to [STUMBLE-LIST.md](../STUMBLE-LIST.md). When they all feel easy, tick J05 in the [README](../README.md) and send `next`.
 
 ---
 
 ## ⚡ Quick Revision (2 hours before the interview)
+
+**🧬 The story:** `count++` from two threads loses updates → **synchronized** (Java 1.0, one at a time) → a lock is heavy, and threads may read old values → **volatile** (visibility) → volatile can't fix `count++`, and locks make threads wait → **AtomicInteger**, CAS (Java 5) → one lock for a whole map makes a queue → **ConcurrentHashMap** (Java 5).
 
 ```mermaid
 sequenceDiagram
@@ -331,6 +369,6 @@ sequenceDiagram
 **🔑 Memory hook:** *"volatile: see the notice board. synchronized: one key to the room. Atomic: 'only if it still says 5'. ConcurrentHashMap: a counter for every section, not one queue for the whole bank."*
 
 **🗣️ Say it aloud (no peeking):**
-1. Draw the "read 5, read 5, write 6, write 6" timeline and explain it.
+1. Draw the "read 5, read 5, write 6, write 6" timeline. Then say why Java 5 added AtomicInteger and ConcurrentHashMap when synchronized already existed.
 2. volatile vs synchronized, with one use case each.
 3. Why is get-then-put unsafe on a ConcurrentHashMap, and what's the fix?

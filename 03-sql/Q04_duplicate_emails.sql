@@ -58,6 +58,22 @@
 
 
 -- ============================================================================
+-- WHY THESE TOOLS EXIST (the story, read it after your own try)
+-- ============================================================================
+-- Pain 1: you want the emails that appear more than once. WHERE COUNT(*) > 1
+--         is an error, because WHERE runs before the piles (and their counts)
+--         exist.
+-- Fix 1 : GROUP BY email, then HAVING COUNT(*) > 1. HAVING exists for exactly
+--         this: it filters the piles after they're counted.
+-- Pain 2: GROUP BY shows each email once, but to delete the extra copies
+--         you need their ids.
+-- Fix 2 : number the copies with ROW_NUMBER() OVER (PARTITION BY email ...),
+--         or keep MIN(id) per email and delete the rest (follow-ups 2 and 3).
+-- Pain 3: cleaning up once doesn't stop new duplicates tomorrow.
+-- Fix 3 : a UNIQUE constraint, so the database itself refuses them.
+
+
+-- ============================================================================
 -- SOLUTION: GROUP BY email, HAVING COUNT(*) > 1
 -- ============================================================================
 -- Make one pile per email, count each pile, keep the piles with more than 1.
@@ -172,6 +188,8 @@ ORDER BY id;
 
 -- QUICK REVISION START
 -- Q04 Duplicate emails
+--   Story   : WHERE can't filter on COUNT -> HAVING filters piles -> GROUP BY hides the extra rows' ids ->
+--             ROW_NUMBER or MIN(id) to delete them -> a UNIQUE constraint stops new ones
 --   Find    : SELECT email, COUNT(*) FROM customers GROUP BY email HAVING COUNT(*) > 1
 --             -> anu@mail.com 2, ravi@mail.com 3
 --   Extras  : ROW_NUMBER() OVER (PARTITION BY email ORDER BY id) > 1 -> ids 3, 5, 6 are the extra copies

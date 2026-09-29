@@ -8,6 +8,13 @@ import java.util.stream.IntStream;
 /*
  * S01  Stream practice: write the 8 programs yourself
  *
+ * WHY STREAMS (the story)
+ *   Before Java 8, each of these 8 programs was a loop with a map, null checks
+ *   and a temporary list, often 8 to 12 lines. Java 8 streams say the same
+ *   thing as one pipeline: source -> filter / map -> collect. That's why
+ *   interviewers ask for streams: they show you think about WHAT you want,
+ *   not only HOW to loop.
+ *
  * HOW TO USE
  *   1. Pick a problem below. Try it for 10 minutes WITHOUT looking anything up.
  *   2. Run:  java 02-java8-streams/S01_StreamPractice.java

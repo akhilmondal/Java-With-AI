@@ -23,6 +23,36 @@ A fourth department, **SECURITY**, has nobody in it yet.
 
 ---
 
+## 🧬 Why does this exist? The story
+
+Every SQL tool in this lesson fixes a side effect of the one before it:
+
+1. **❌ The pain:** store the department name in every employee row, and renaming "PAYMENTS" means updating 1,000 rows. One typo, like "PAYMNETS", creates a fake department.
+2. **✅ The fix (the relational model, E. F. Codd, 1970): split the data into tables.** Each fact is stored once. `employees.department_id` points to `departments.id`.
+3. **❌ New pain:** a report needs the employee **and** the department name, and now they're in two tables.
+4. **✅ The fix: JOIN** puts them side by side again. **LEFT JOIN** also keeps rows with no match, like the empty SECURITY department.
+5. **❌ New pain:** managers want totals, not 8 lines: head count and salary per department. And `WHERE` can't filter on a count, because it runs before the groups exist.
+6. **✅ The fix: GROUP BY** makes one row per pile, and **HAVING** filters the piles.
+7. **❌ New pain:** GROUP BY squashes the rows, so the names are lost. "Rank people inside their department" needed messy self-joins and subqueries.
+8. **✅ The fix (the SQL:2003 standard; PostgreSQL 8.4 in 2009, MySQL 8.0 in 2018): window functions.** They calculate across rows (a rank, an average) and keep every row. The same PostgreSQL and MySQL versions added **CTEs** (`WITH`), which give each step of a long query a name.
+
+```mermaid
+flowchart TD
+    A["❌ department name in every row<br/>rename = update 1,000 rows"] --> B["✅ split into tables, store each fact once<br/>(relational model, Codd 1970)"]
+    B --> C["❌ a report needs data<br/>from two tables"]
+    C --> D["✅ JOIN puts them side by side<br/>LEFT JOIN keeps the unmatched"]
+    D --> E["❌ managers want totals per department<br/>and WHERE can't filter a count"]
+    E --> F["✅ GROUP BY + HAVING"]
+    F --> G["❌ GROUP BY squashes rows<br/>the names are lost"]
+    G --> H["✅ window functions keep every row<br/>(SQL:2003, PostgreSQL 8.4 in 2009)"]
+```
+
+👀 **Notice:** NULL has a small story too. Some values are unknown, like the manager of the CEO, so SQL has **NULL**. But "unknown = unknown" isn't true, so `= NULL` finds nothing, and SQL added **IS NULL** (Step 7).
+
+🧠 **So it's not random:** splitting tables needs JOIN, JOIN gives too many rows so GROUP BY summarizes them, and GROUP BY loses detail so window functions keep it.
+
+---
+
 ## 🧩 Words you need
 
 | Word | In one line |
@@ -217,6 +247,7 @@ It gives the same result as a subquery, but it reads top to bottom. `WITH RECURS
 - *Product companies:* run order, window functions with ties, NULL traps (NOT IN, COUNT), CTEs, and **why** a query is slow (indexes, EXPLAIN in Q07).
 
 **Say it in this order** (for any SQL theory question):
+0. **Why each tool exists:** data is split into tables so each fact is stored once. JOIN puts it back together, GROUP BY summarizes, and window functions summarize without losing rows.
 1. **Run order:** FROM/JOIN, WHERE, GROUP BY, HAVING, SELECT, ORDER BY, LIMIT.
 2. **JOINs:** INNER keeps only matches. LEFT keeps every left row, with NULLs.
 3. **GROUP BY:** one row per group, and every selected column must be grouped or aggregated.
@@ -282,11 +313,19 @@ RANK 3, DENSE_RANK 2.
 
 </details>
 
+<details><summary>6. GROUP BY already gives results per department. Why do window functions exist?</summary>
+
+GROUP BY squashes each department into one row, so you lose the names. A window function calculates across the rows (a rank, an average) but keeps every row, so you can show each person next to their rank or their department's average.
+
+</details>
+
 When they all feel easy, tick Q00 in the [README](../README.md) and start [Q01](Q01_nth_highest_salary.sql).
 
 ---
 
 ## ⚡ Quick Revision (2 hours before the interview)
+
+**🧬 The story:** the same fact repeated in every row → **separate tables** (Codd, 1970) → the data is now in two tables → **JOIN** → too many rows for a report → **GROUP BY + HAVING** → grouping loses the names → **window functions** (SQL:2003, PostgreSQL 8.4).
 
 ```mermaid
 flowchart LR
@@ -321,5 +360,5 @@ flowchart LR
 
 **🗣️ Say it aloud (no peeking):**
 1. Walk the "at least 2 people over 60,000" query through the run order, with the numbers.
-2. RANK vs DENSE_RANK vs ROW_NUMBER, on the 90,000 tie.
+2. Why do window functions exist? Then RANK vs DENSE_RANK vs ROW_NUMBER, on the 90,000 tie.
 3. Why does NOT IN with a NULL return no rows?

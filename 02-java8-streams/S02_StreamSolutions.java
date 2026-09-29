@@ -14,6 +14,12 @@ import java.util.stream.IntStream;
 /*
  * S02  Stream solutions: open this ONLY after you've tried S01 yourself
  *
+ * THE STORY: before Java 8, each of these programs was a loop with a map,
+ * null checks and a temporary list. Streams (Java 8) say it as one pipeline,
+ * and each collector exists to answer one question: how many (counting),
+ * how much (summingInt), which is biggest (maxBy), which two groups
+ * (partitioningBy), and what if a key repeats (toMap's merge function).
+ *
  * Each problem has:
  *   - the solution, with a comment on every step
  *   - "Say it like this": how to talk through it while live coding
@@ -248,6 +254,8 @@ public class S02_StreamSolutions {
 /*
  * QUICK REVISION START
  * S02 The 8 stream programs: one line each. Say the idea first, then write it.
+ *   Story: each program was a 10-line loop with null checks before Java 8. Streams made it one
+ *          pipeline, and each collector answers one question: count, sum, max, split in two.
  *   1 char frequency     : s.chars().mapToObj(c -> (char) c)
  *                            .collect(groupingBy(identity(), LinkedHashMap::new, counting()))   -> {S=3, U=1, C=2, E=1}
  *   2 first non-repeated : frequencyMap.entrySet().stream().filter(e -> e.getValue() == 1)

@@ -7,6 +7,18 @@
      payments from debiting the same balance at the same time?"
    These are the usual follow-ups after the six query problems.
 
+   THE STORY (why each tool exists)
+     Pain: finding one payment among 1 lakh rows means reading every row
+       -> Fix: an INDEX, a sorted B-tree, like the index at the back of a book
+     Pain: a transfer crashes after the debit but before the credit,
+           and Rs 300 vanishes
+       -> Fix: a TRANSACTION with ACID: all or nothing
+     Pain: running transactions one at a time is safe but far too slow, and
+           running them together lets them see each other's half-done work
+       -> Fix: ISOLATION LEVELS, so you choose how much safety you pay for
+     Pain: two debits read the same balance of 700, and one update is lost
+       -> Fix: an atomic UPDATE, SELECT ... FOR UPDATE, or a version column
+
    HOW TO RUN
      Paste Q00_setup.sql into db-fiddle's left box and this file into the right
      box. Parts marked "PostgreSQL only" won't run on other databases.
@@ -236,6 +248,9 @@ COMMIT;
 
 -- QUICK REVISION START
 -- Q07 Indexes, ACID, isolation
+--   Story     : reading every row is slow -> index | a crash mid-transfer loses money -> ACID transaction |
+--               one at a time is too slow, all together is unsafe -> isolation levels |
+--               two debits read the same 700 -> atomic UPDATE, FOR UPDATE or @Version
 --   Index     : a sorted B-tree, like a book's index -> EXPLAIN shows "Index Scan" instead of "Seq Scan".
 --               Composite (status, amount) helps "status = ?" and "status = ? AND amount > ?",
 --               not "amount > ?" alone (the leftmost-column rule). Costs: slower writes, more disk.

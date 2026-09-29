@@ -9,6 +9,13 @@ import java.util.TreeMap;
 /*
  * J04  ArrayList vs LinkedList, HashMap vs LinkedHashMap vs TreeMap: a runnable demo
  *
+ * THE STORY (why there are so many collections)
+ *   Arrays can't grow                        -> Vector, Hashtable           (Java 1.0, locked)
+ *   Locks wasted, no common interface        -> List, Map, ArrayList,
+ *                                               LinkedList, HashMap, TreeMap (Java 1.2, no locks)
+ *   HashMap forgets the order you put things -> LinkedHashMap               (Java 1.4)
+ *   LinkedList is a slow queue               -> ArrayDeque                  (Java 6)
+ *
  * WHAT YOU WILL SEE (the numbers match J04_ListsAndMaps.md)
  *   Step 1  ArrayList: get(3) jumps straight there; add(0) shifts 5 items; capacity 10 -> 15 -> 22 -> 33 -> 49
  *   Step 2  LinkedList: addFirst/addLast just link; get(3) walks T0 -> T1 -> T2 -> T3

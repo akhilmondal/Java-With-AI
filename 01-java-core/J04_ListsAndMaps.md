@@ -4,7 +4,37 @@
 
 | ⏱️ Read | 🧪 Run | 🎯 Asked |
 |---|---|---|
-| 12 min | `java 01-java-core/J04_ListsAndMaps.java` | "Which collection would you use and why?" comes up in every round |
+| 14 min | `java 01-java-core/J04_ListsAndMaps.java` | "Which collection would you use and why?" comes up in every round |
+
+---
+
+## 🧬 Why does this exist? The story
+
+Why does Java have so many lists and maps? Each one arrived to fix a pain the older ones had:
+
+1. **❌ The pain:** a Java array has a **fixed size**. `new String[10]` holds 10 transactions, and the 11th doesn't fit. You'd have to make a bigger array and copy everything yourself.
+2. **✅ The fix (Java 1.0, 1996): `Vector` and `Hashtable`.** A list and a map that grow by themselves.
+3. **❌ New pain:** both put a **lock** on every method, which is wasted time when one thread uses them. They also had no common interface, so code written for one couldn't switch to another.
+4. **✅ The fix (Java 1.2, 1998): the Collections Framework.** Common interfaces (`List`, `Set`, `Map`) and fast classes with no locks: `ArrayList`, `LinkedList`, `HashMap` and `TreeMap`. Each has a **shape** that's fast for one job: ArrayList for reading by index, LinkedList for adding at the ends, TreeMap for sorted keys.
+5. **❌ New pain:** HashMap forgets the order you put things in. For "recent billers in the order they were added", or for a cache, you need that order.
+6. **✅ The fix (Java 1.4, 2002): `LinkedHashMap`.** A HashMap plus an arrival register. With one flag, it becomes an LRU cache in 10 lines (Step 7).
+7. **❌ New pain:** people used LinkedList as a queue. But its nodes are scattered in memory, so it's slow, and it uses more memory.
+8. **✅ The fix (Java 6, 2006): `ArrayDeque`.** A queue and stack built on an array, which is faster.
+
+```mermaid
+flowchart TD
+    A["❌ an array has a fixed size<br/>the 11th item doesn't fit"] --> B["✅ Vector and Hashtable grow by themselves<br/>(Java 1.0, 1996)"]
+    B --> C["❌ a lock on every method<br/>and no common interface"]
+    C --> D["✅ Collections Framework (Java 1.2, 1998)<br/>List, Map, ArrayList, HashMap, TreeMap, no locks"]
+    D --> E["❌ HashMap forgets the order<br/>you put things in"]
+    E --> F["✅ LinkedHashMap (Java 1.4, 2002)<br/>arrival order, LRU cache"]
+    F --> G["❌ LinkedList as a queue<br/>is slow and uses more memory"]
+    G --> H["✅ ArrayDeque (Java 6, 2006)<br/>a fast queue and stack"]
+```
+
+👀 **Notice:** "**safe first, fast later**" again (J03, J01): Vector and Hashtable (locked) came first, ArrayList and HashMap (no locks) came later.
+
+🧠 **So it's not random:** every collection is a trade-off picked for one job. Java 21 (2023) added one more small fix: `getFirst()` and `getLast()` on every ordered collection, because each class used to do it differently.
 
 ---
 
@@ -190,7 +220,8 @@ after put MOBILE: [GAS, ELEC, MOBILE]   (WATER evicted)
 - *Service companies:* the differences in plain words and the Big-O table.
 - *Product companies:* **why** ArrayList usually wins (memory layout, cache-friendliness), the growth policy, LRU with LinkedHashMap, TreeMap's navigation methods, and picking a collection for a real scenario.
 
-**Say it in this order:**
+**Say it in this order** (start with the problem):
+0. **Why there are so many:** arrays can't grow, so Java added collections that grow by themselves. Each one has a shape that's fast for one job.
 1. **ArrayList** is a resizable array: `get(i)` is O(1), inserting at the front or in the middle is O(n) because of shifting, and it grows 1.5×.
 2. **LinkedList** is a doubly linked list: O(1) at the ends, O(n) `get(i)`, and more memory per item.
 3. In practice **ArrayList is the default**, and ArrayDeque is better for queues.
@@ -199,7 +230,7 @@ after put MOBILE: [GAS, ELEC, MOBILE]   (WATER evicted)
 
 **Sample answer** (about a minute, in your own words):
 
-> "ArrayList is backed by an array, so get by index is O(1), but inserting at the front shifts every element, so it's O(n), and when it's full it grows by 50% and copies everything. LinkedList is a doubly linked list: adding or removing at the ends is O(1), but get by index walks the nodes, and each node carries two extra links. In practice I use ArrayList almost always. For maps, HashMap gives O(1) with no ordering. LinkedHashMap keeps insertion order, and in access order it can work as an LRU cache. TreeMap keeps keys sorted in a red-black tree, O(log n), with methods like floorKey, which I'd use for fee slabs by amount."
+> "Arrays have a fixed size, so Java gives us collections that grow, and each one is fast for a different job. ArrayList is backed by an array, so get by index is O(1), but inserting at the front shifts every element, so it's O(n), and when it's full it grows by 50% and copies everything. LinkedList is a doubly linked list: adding or removing at the ends is O(1), but get by index walks the nodes, and each node carries two extra links. In practice I use ArrayList almost always. For maps, HashMap gives O(1) with no ordering. LinkedHashMap keeps insertion order, and in access order it can work as an LRU cache. TreeMap keeps keys sorted in a red-black tree, O(log n), with methods like floorKey, which I'd use for fee slabs by amount."
 
 **Product-company deep dive:**
 - **Q: Why is ArrayList often faster even with some shifting?**
@@ -214,7 +245,7 @@ after put MOBILE: [GAS, ELEC, MOBILE]   (WATER evicted)
 ## ❓ Follow-up questions
 
 **ArrayList vs Vector?**
-Vector is the old one: every method is synchronized, and it grows 2×. Use ArrayList, or a concurrent collection for threads.
+Vector is the old one (Java 1.0): every method is synchronized, and it grows 2×. ArrayList (Java 1.2) took the locks out, because most lists are used by one thread. Use ArrayList, or a concurrent collection for threads.
 
 **Arrays.asList vs List.of?**
 `Arrays.asList` has a fixed size: `set()` works, but `add()` and `remove()` throw. `List.of` is fully unmodifiable and doesn't allow nulls.
@@ -267,11 +298,19 @@ ELEC. After get(WATER) the order is [ELEC, GAS, WATER], so ELEC is the least rec
 
 </details>
 
+<details><summary>7. Java already had Vector. Why was ArrayList added? And why LinkedHashMap later?</summary>
+
+Vector (Java 1.0) locks every method, which is wasted work when one thread uses the list. ArrayList (Java 1.2) is the same idea without locks, under the common List interface. LinkedHashMap (Java 1.4) was added because HashMap forgets the order you put things in.
+
+</details>
+
 If you get stuck on one, add it to [STUMBLE-LIST.md](../STUMBLE-LIST.md). When they all feel easy, tick J04 in the [README](../README.md) and send `next`.
 
 ---
 
 ## ⚡ Quick Revision (2 hours before the interview)
+
+**🧬 The story:** arrays can't grow → **Vector, Hashtable** (Java 1.0, locked) → locks wasted, no common interface → **Collections Framework** (1.2): ArrayList, LinkedList, HashMap, TreeMap → HashMap forgets the order → **LinkedHashMap** (1.4) → LinkedList is a slow queue → **ArrayDeque** (6).
 
 ```mermaid
 flowchart TD
@@ -302,6 +341,6 @@ flowchart TD
 **🔑 Memory hook:** *"Cinema seats (jump to any seat, shifting is painful) vs train coaches (easy to hook on at the ends, you walk to reach the middle). The cupboard, the register or the directory: no order, arrival order, sorted."*
 
 **🗣️ Say it aloud (no peeking):**
-1. Why does ArrayList usually beat LinkedList, even for some inserts?
-2. The same 4 keys: what order does each map give, and why?
-3. How do you build an LRU cache with LinkedHashMap?
+1. Java already had Vector and Hashtable. Why were ArrayList, HashMap and later LinkedHashMap added?
+2. Why does ArrayList usually beat LinkedList, even for some inserts?
+3. The same 4 keys: what order does each map give? And how do you turn LinkedHashMap into an LRU cache?

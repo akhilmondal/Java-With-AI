@@ -67,6 +67,20 @@
 
 
 -- ============================================================================
+-- WHY THIS TOOL EXISTS (the story, read it after your own try)
+-- ============================================================================
+-- Pain 1: a manager is also an employee. A separate managers table would
+--         store the same person twice. Sneha would be in both tables, because
+--         she reports to Meera AND manages Amit and Karan.
+-- Fix 1 : keep one table, where manager_id points to another row's id.
+-- Pain 2: now the manager's NAME is in another row of the SAME table.
+-- Fix 2 : a self-join. Use the table twice with two aliases, e (the employee)
+--         and m (the manager), and match m.id = e.manager_id.
+-- Pain 3: an INNER JOIN drops Meera, because she has no manager to match.
+-- Fix 3 : LEFT JOIN keeps her, and COALESCE turns her NULL into "No manager".
+
+
+-- ============================================================================
 -- THE IDEA: use the same table twice, with two different aliases
 -- ============================================================================
 --   e = "the employee" copy,   m = "the manager" copy
@@ -209,6 +223,9 @@ ORDER BY level;
 
 -- QUICK REVISION START
 -- Q05 Employee with manager's name (self-join)
+--   Story   : a managers table would store people twice -> manager_id in the same table ->
+--             the name is in another row -> self-join with aliases e and m ->
+--             INNER JOIN drops the top boss -> LEFT JOIN + COALESCE
 --   Picture : employees e (the employee)  --  e.manager_id = m.id  -->  employees m (the manager)
 --             Neha (manager_id 7)  ---->  id 7 = Vikram
 --   Query   : SELECT e.name, COALESCE(m.name, 'No manager') FROM employees e

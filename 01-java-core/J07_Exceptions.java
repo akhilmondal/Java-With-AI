@@ -5,6 +5,12 @@ import java.nio.file.Path;
 /*
  * J07  Exceptions: checked vs unchecked, finally, try-with-resources, custom: a runnable demo
  *
+ * THE STORY (why each piece exists)
+ *   C error codes (-1) were silently ignored  -> exceptions: can't be ignored     (Java 1.0)
+ *   Expected failures went unplanned         -> checked exceptions: must handle  (Java 1.0)
+ *   An exception skips the close() line      -> finally: always runs             (Java 1.0)
+ *   finally cleanup got messy, hid errors    -> try-with-resources               (Java 7)
+ *
  * WHAT YOU WILL SEE (the numbers match J07_Exceptions.md)
  *   Step 2  a CHECKED exception (IOException) that the compiler forced us to handle
  *   Step 3  UNCHECKED exceptions from bugs: / by zero, a null, "12a" as a number

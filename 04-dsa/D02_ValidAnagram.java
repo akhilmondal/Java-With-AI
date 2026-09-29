@@ -53,6 +53,19 @@ public class D02_ValidAnagram {
     }
 
     // =========================================================================
+    // WHY THE BETTER WAY EXISTS (the story)
+    // =========================================================================
+    //   The pain : sorting does more work than the question needs. It puts
+    //              every letter in ORDER, which costs O(n log n), but we only
+    //              need to know HOW MANY of each letter there are.
+    //   The clue : there are only 26 possible letters, so 26 counters are
+    //              enough, however long the words are.
+    //   The fix  : count instead of sort. One pass, O(n) time, and the space
+    //              is always 26 slots, so O(1).
+    //   Its limit: 26 slots only work for a to z. For any characters (Hindi,
+    //              emoji, uppercase), approach 2b swaps the array for a HashMap.
+
+    // =========================================================================
     // APPROACH 2: count the letters (the answer interviewers want)
     // =========================================================================
     //   Picture a shopkeeper's tally: +1 for every letter of the first word,
@@ -214,6 +227,8 @@ public class D02_ValidAnagram {
 /*
  * QUICK REVISION START
  * D02 Valid Anagram: do two strings use the same letters, the same number of times?
+ *   Story   : sorting puts every letter in order, O(n log n), but we only need counts -> only 26 letters
+ *             exist -> an int[26] tally: O(n) time, O(1) space -> any characters? use a HashMap
  *   Idea    : a tally in int[26]: +1 for each letter of s, -1 for each letter of t; all zero = anagram
  *   Picture : "listen" / "silent"   e i l n s t : +1 each, then -1 each -> all 0 -> true
  *             "rat" / "car"          c ends at -1, t ends at +1         -> false

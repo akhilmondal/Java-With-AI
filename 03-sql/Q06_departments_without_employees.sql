@@ -51,6 +51,20 @@
 
 
 -- ============================================================================
+-- WHY THESE TOOLS EXIST (the story, read it after your own try)
+-- ============================================================================
+-- Pain 1: an INNER JOIN keeps only departments that match an employee, so the
+--         empty SECURITY department simply disappears. You can't see what
+--         isn't there.
+-- Fix 1 : LEFT JOIN keeps every department, with NULLs where nobody matched.
+--         Then WHERE e.id IS NULL keeps exactly the empty ones.
+-- Pain 2: NOT IN looks simpler, but one NULL in its list makes it return
+--         nothing at all.
+-- Fix 2 : NOT EXISTS asks "is there any matching employee?", and it's safe
+--         with NULLs.
+
+
+-- ============================================================================
 -- THE IDEA: LEFT JOIN keeps every department, "no match" shows up as NULLs
 -- ============================================================================
 --   departments LEFT JOIN employees:
@@ -208,6 +222,8 @@ SELECT name FROM departments WHERE id NOT IN (1, 2, 3, NULL);
 
 -- QUICK REVISION START
 -- Q06 Departments with zero employees
+--   Story   : INNER JOIN hides unmatched rows -> LEFT JOIN keeps them, with NULLs -> keep e.id IS NULL ->
+--             NOT IN breaks on a NULL -> NOT EXISTS
 --   Query   : SELECT d.name FROM departments d LEFT JOIN employees e ON e.department_id = d.id
 --             WHERE e.id IS NULL                                    -> SECURITY
 --   Same    : WHERE NOT EXISTS (SELECT 1 FROM employees e WHERE e.department_id = d.id)

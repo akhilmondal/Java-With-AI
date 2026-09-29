@@ -8,6 +8,13 @@ import java.util.concurrent.atomic.AtomicInteger;
 /*
  * J05  synchronized, volatile, atomics, ConcurrentHashMap: a runnable demo
  *
+ * THE STORY (why there are so many thread tools)
+ *   count++ from 2 threads loses updates     -> synchronized: one at a time   (Java 1.0)
+ *   A lock is heavy for a flag, and threads
+ *   may keep reading an old cached value     -> volatile: see the latest value (reliable since Java 5)
+ *   volatile can't fix count++, locks wait   -> AtomicInteger: compare-and-set (Java 5)
+ *   One lock for a whole map is a queue      -> ConcurrentHashMap: lock a bucket (Java 5)
+ *
  * WHAT YOU WILL SEE (the numbers match J05_ConcurrencyBasics.md)
  *   Step 1  2 threads x 100,000 count++ on a plain int: far less than 200,000
  *   Step 2  synchronized: exactly 200,000

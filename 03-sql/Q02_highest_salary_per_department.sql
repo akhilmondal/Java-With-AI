@@ -55,6 +55,21 @@
 
 
 -- ============================================================================
+-- WHY THESE TOOLS EXIST (the story, read it after your own try)
+-- ============================================================================
+-- Pain 1: you want one answer per department, not one per employee.
+-- Fix 1 : GROUP BY department makes one pile per department, and MAX(salary)
+--         gives each pile's top amount.
+-- Pain 2: GROUP BY squashes each pile into one row, so the NAME is lost.
+--         SELECT name ... GROUP BY department_id is an error: a pile has
+--         three names, and SQL can't guess which one you mean.
+-- Fix 2 : match the salary back with a subquery (Solution 3), or use a
+--         window function, which keeps every row. Rank people INSIDE each
+--         department (PARTITION BY) and keep rank 1 (Solution 2). Ties keep
+--         both people.
+
+
+-- ============================================================================
 -- SOLUTION 1: GROUP BY + MAX (just the amount)
 -- ============================================================================
 SELECT d.name        AS department,
@@ -167,6 +182,8 @@ ORDER BY d.name, e.salary DESC;
 
 -- QUICK REVISION START
 -- Q02 Highest salary per department
+--   Story       : one answer per department -> GROUP BY + MAX -> GROUP BY loses the name ->
+--                 match it back with a subquery, or rank inside each department (window function)
 --   Amount only : SELECT d.name, MAX(e.salary) FROM employees e JOIN departments d ON d.id = e.department_id
 --                 GROUP BY d.name                         -> BILLING 90000, PAYMENTS 90000, UI 75000
 --   Who earns it: DENSE_RANK() OVER (PARTITION BY department_id ORDER BY salary DESC) in a subquery,

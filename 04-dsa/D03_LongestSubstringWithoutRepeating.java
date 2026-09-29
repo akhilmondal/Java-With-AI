@@ -60,6 +60,20 @@ public class D03_LongestSubstringWithoutRepeating {
     }
 
     // =========================================================================
+    // WHY THE BETTER WAY EXISTS (the story)
+    // =========================================================================
+    //   The pain  : brute force throws its work away. Start 2 already checked
+    //               "wke". Then start 3 checks k and e again from scratch.
+    //               Every start re-reads almost the same letters: O(n^2).
+    //   The clue  : when a letter repeats, only the FRONT of the run is broken.
+    //               Everything after the old copy is still unique, so keep it.
+    //   The fix   : a sliding window. The right end only moves forward, and the
+    //               left end jumps past the old copy. Each letter enters the
+    //               window once, so it's O(n).
+    //   The detail: a map of each letter's LAST position lets left jump there
+    //               in one step, instead of walking.
+
+    // =========================================================================
     // APPROACH 2: a sliding window (the answer interviewers want)
     // =========================================================================
     //   Picture a bank queue with one rule: no two people with the same name.
@@ -234,6 +248,9 @@ public class D03_LongestSubstringWithoutRepeating {
 /*
  * QUICK REVISION START
  * D03 Longest Substring Without Repeating Characters: the longest run with no repeated character.
+ *   Story   : brute force restarts at every position and re-reads the same letters, O(n^2) -> a repeat
+ *             breaks only the FRONT of the run -> keep the rest: a sliding window, left jumps past the
+ *             old copy, O(n)
  *   Idea    : a sliding window [left, right] that always holds unique characters, plus a map of each
  *             character's LAST position. On a repeat inside the window: left = max(left, last + 1).
  *   Picture : p w w k e w

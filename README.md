@@ -30,13 +30,20 @@ Every lesson follows what learning research says works best:
 
 | Research finding | What you'll see in every lesson |
 |---|---|
+| Meeting the **problem before the solution** builds deeper understanding, and asking "why does this exist?" makes it stick (Kapur 2008; Dunlosky et al., 2013) | every lesson opens with **🧬 Why does this exist?**: the pain, the fix, the new pain, the next fix, with Java versions and years |
 | Words plus a picture beat words alone (dual coding) | a **diagram right next to** each idea |
 | Concrete examples make rules stick | **one small example** with numbers you can work out in your head |
 | Asking "why?" deepens understanding | every rule comes with its **reason** |
 | **Testing yourself** and **spacing out revision** work best, while rereading and highlighting work poorly (Dunlosky et al., 2013) | a **🧪 Test yourself** section, and a **⚡ Quick Revision** at the end with "say it aloud" questions |
-| People remember the start and the end best | a **one-line summary** at the top and the **Quick Revision** at the bottom |
+| People remember the start and the end best | a **one-line summary** and the **story** at the top, and the **Quick Revision** (which starts with the story in one line) at the bottom |
 
-**How to use a lesson:** read the `.md` (it starts with "In one line") → run the `.java` → close both and explain the topic aloud → answer 🧪 Test yourself without looking.
+**How to use a lesson:** read the `.md` (it starts with "In one line" and the 🧬 story) → run the `.java` → close both and explain the topic aloud, **starting with the problem it solved** → answer 🧪 Test yourself without looking.
+
+**Where the story is in the other files:**
+- `.java` demos have a **THE STORY** part in the header.
+- The SQL problems (Q01–Q06) have a **WHY THIS TOOL EXISTS** block right after the "try it yourself" gap, and the DSA files have a **WHY THE BETTER WAY EXISTS** block between the brute force and the better approach, so neither spoils your own attempt.
+- Q07 and `Q00_setup.sql` have no practice gap, so their story is in the header.
+- Every QUICK REVISION block has a **Story** line.
 
 **Revision schedule:**
 - **The night before:** read each lesson's ⚡ Quick Revision.
