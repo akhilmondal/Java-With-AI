@@ -68,7 +68,7 @@ Java With AI/
 ├── 02-java8-streams/             Part 2  streams toolkit, practice, solutions        .java (runnable)
 ├── 03-sql/                       Part 3  schema and the 6 queries                    .sql  (PostgreSQL)
 ├── 04-dsa/                       Part 4  3 warm-up problems                          .java (runnable)
-├── 05-spring-boot/               Part 5  Spring Boot notes                           .md with Java code
+├── 05-spring-boot/               Part 5  Spring Boot notes                           .md with Java code (B13 also has a .java to run)
 ├── 06-microservices/             Part 6  microservices notes                         .md
 ├── 07-project-stories/           Part 7  your architecture and 5 stories             .md
 ├── 08-angular/                   Part 8  Angular notes and 2 hands-on builds         .md with TypeScript
@@ -115,6 +115,7 @@ Java With AI/
 - [ ] **J10** SOLID with an example from your own code; interface vs abstract class; immutable class → read [J10_SolidAndImmutability.md](01-java-core/J10_SolidAndImmutability.md), run [J10_SolidAndImmutability.java](01-java-core/J10_SolidAndImmutability.java)
 - [ ] ⭐ **J11** Modern Java (8 to 21): lambdas, functional interfaces, records, switch expressions, virtual threads → read [J11_ModernJavaFeatures.md](01-java-core/J11_ModernJavaFeatures.md), run [J11_ModernJavaFeatures.java](01-java-core/J11_ModernJavaFeatures.java)
 - [ ] ⭐ **J12** Design patterns: Singleton, Builder, Factory, Strategy → read [J12_DesignPatterns.md](01-java-core/J12_DesignPatterns.md), run [J12_DesignPatterns.java](01-java-core/J12_DesignPatterns.java)
+- [ ] ⭐ **J13** Multithreading from zero: threads, start() vs run(), the 6 states, sleep vs wait, the 3 dangers (race, visibility, deadlock), BlockingQueue, CountDownLatch, Semaphore, ThreadLocal, and the odd-even program → read [J13_MultithreadingFromZero.md](01-java-core/J13_MultithreadingFromZero.md), run [J13_MultithreadingFromZero.java](01-java-core/J13_MultithreadingFromZero.java)
 
 ### Part 2 · Java 8 streams (Sat, 2 h) → `02-java8-streams/`
 
@@ -161,6 +162,7 @@ Java With AI/
 - [ ] **B10** Spring Security with JWT: how a request moves through the filter chain → `B10-spring-security-jwt.md`
 - [ ] **B11** Actuator health and metrics → `B11-actuator.md`
 - [ ] ⭐ **B12** Testing: JUnit 5, Mockito, @WebMvcTest, @SpringBootTest → `B12-testing.md`
+- [ ] ⭐ **B13** Multithreading in Spring Boot: request threads, stateless beans, @Async on your own pool, context (MDC, security, transactions), @Scheduled, RabbitMQ concurrency, and locking across servers → read [B13_MultithreadingInSpringBoot.md](05-spring-boot/B13_MultithreadingInSpringBoot.md), run [B13_MultithreadingInSpringBoot.java](05-spring-boot/B13_MultithreadingInSpringBoot.java) (plain Java, no Spring needed)
 
 ### Part 6 · Microservices (Sun, 2 h) → `06-microservices/`
 
@@ -240,6 +242,7 @@ Your plan already covers the core. These come up often in 3-year Java full-stack
 
 - **J11 Modern Java:** "Which Java version do you use, and what's new in it?" is a common opener.
 - **J12 Design patterns:** Strategy and Factory fit payment-gateway code (PayU vs Setu) naturally, so you can answer from your own work.
+- **J13 and B13 Multithreading** (you asked for these on 29 Sep): a payments backend is full of threads, from request threads, @Async and schedulers to RabbitMQ consumers. "How do you stop a double debit?" is a favourite question.
 - **Q07 Indexes and isolation levels:** the usual follow-up once the SQL queries are done.
 - **B12 Testing:** "How do you test this service?" comes up in most Spring rounds.
 - **M09 Docker:** only if time is left over. Your JD doesn't mention Docker or Kubernetes.

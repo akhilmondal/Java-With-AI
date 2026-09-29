@@ -18,6 +18,7 @@
 - [J10 · SOLID, interface vs abstract class, immutable class](#j10-solidandimmutability)
 - [J11 ⭐ · Modern Java, 8 to 21: the features interviewers ask about](#j11-modernjavafeatures)
 - [J12 ⭐ · Design patterns: Singleton, Builder, Factory, Strategy (and Proxy)](#j12-designpatterns)
+- [J13 ⭐ · Multithreading from zero: threads, their life, the 3 dangers, and the tools](#j13-multithreadingfromzero)
 - [S00 · Streams toolkit: the collectors you need for the 8 programs](#s00-streamstoolkit)
 - [S02 The 8 stream programs](#s02-streamsolutions)
 - [Q00 · SQL toolkit: how a query really runs, JOINs, GROUP BY/HAVING, window functions](#q00-sql-toolkit)
@@ -31,6 +32,7 @@
 - [D01 Two Sum](#d01-twosum)
 - [D02 Valid Anagram](#d02-validanagram)
 - [D03 Longest Substring Without Repeating Characters](#d03-longestsubstringwithoutrepeating)
+- [B13 ⭐ · Multithreading in Spring Boot: request threads, stateless beans, @Async, thread pools, @Scheduled, and locks across servers](#b13-multithreadinginspringboot)
 
 ---
 
@@ -553,6 +555,49 @@ flowchart LR
 
 ---
 
+<a id="j13-multithreadingfromzero"></a>
+
+## J13 ⭐ · Multithreading from zero: threads, their life, the 3 dangers, and the tools
+
+[Full lesson](01-java-core/J13_MultithreadingFromZero.md) · [Back to contents](#contents)
+
+**🧬 The story:** one worker does one thing at a time (900 ms) → **threads** (Java 1.0): 305 ms → shared data gets spoiled → **synchronized + volatile** (Java 1.0) → deadlocks, costly threads, tricky wait/notify → **java.util.concurrent** (Java 5): pools, atomics, BlockingQueue, latches → OS threads are heavy → **virtual threads** (Java 21).
+
+```mermaid
+flowchart LR
+    SH["threads share objects"] --> R["race: lost updates<br/>fix: synchronized, AtomicInteger"]
+    SH --> V["visibility: old values<br/>fix: volatile"]
+    SH --> D["deadlock: wait forever<br/>fix: one lock order, tryLock"]
+```
+
+**🧠 Must remember**
+1. A **process** is the running app, with its own memory. A **thread** is a worker inside it. Threads share the **heap**, and each has its own **stack**.
+2. Threads help most with **waiting**: 3 calls of 300 ms take **904 ms** on 1 thread and **305 ms** on 3.
+3. Create one by extending Thread, implementing Runnable, or with a lambda. **Callable** returns a value (`pool.submit` gives a Future). Real code uses a **pool** (J06) or **@Async** (B13).
+4. **start()** makes a new thread. **run()** is a normal call on the current thread. start() twice throws **IllegalThreadStateException**.
+5. **States:** NEW, RUNNABLE, BLOCKED (wants a lock), WAITING (no time limit), TIMED_WAITING (sleep), TERMINATED.
+6. **sleep() keeps the lock** (B waited about 247 ms). **wait() gives it back** (0 ms), and must be called inside synchronized, in a while loop.
+7. **Race:** `count++` lost updates (124k to 166k of 200k), so use synchronized or AtomicInteger. **Visibility:** use volatile. **Stopping:** use interrupt(), and never leave the catch empty.
+8. **Deadlock:** locks taken in opposite orders. Fix it with one fixed order (Rahul 800, Priya 700) or tryLock with a timeout. Find it with a thread dump (jstack).
+9. **BlockingQueue** = producer-consumer with no wait/notify. **CountDownLatch** = wait for N. **Semaphore** = at most N at once (2 permits: 5 calls took 3 rounds).
+10. **ThreadLocal** = one copy per thread. Spring keeps the transaction, the user and the trace ID there. In pools, always **remove()** in finally.
+
+**⚠️ Top traps**
+- `run()` instead of `start()`.
+- `wait()` with `if`, or outside `synchronized`.
+- A ThreadLocal in a pool without `remove()`.
+
+**🎯 30-second answer:** "A thread is a worker inside a process. Threads share the heap and each has its own stack, so they let waiting work overlap: three 300 ms calls take 300 ms instead of 900. Real code gives tasks to a pool or @Async and always calls start. Sharing data brings three dangers: races, fixed with synchronized or atomics, visibility, fixed with volatile, and deadlocks, avoided with a fixed lock order. For coordination I use BlockingQueue, CountDownLatch and Semaphore."
+
+**🔑 Memory hook:** *"Cooks in one kitchen: their own notepads (stacks), one shared storeroom (heap). Trouble only at shared things: two cooks on one board (race), an old copy of the board (visibility), each holding what the other needs (deadlock)."*
+
+**🗣️ Say it aloud (no peeking):**
+1. Why do threads exist, and why did Java 5 add java.util.concurrent?
+2. start() vs run(), and the 6 states with one example each.
+3. Explain the deadlock with the two transfers, and two ways to prevent it.
+
+---
+
 <a id="s00-streamstoolkit"></a>
 
 ## S00 · Streams toolkit: the collectors you need for the 8 programs
@@ -920,5 +965,49 @@ D03 Longest Substring Without Repeating Characters: the longest run with no repe
     using max so it never goes back. Best = max(best, right - left + 1). O(n) time."
   Memory hook: a bank queue with a no-same-name rule; people leave from the front until the old namesake is gone.
 ```
+
+---
+
+<a id="b13-multithreadinginspringboot"></a>
+
+## B13 ⭐ · Multithreading in Spring Boot: request threads, stateless beans, @Async, thread pools, @Scheduled, and locks across servers
+
+[Full lesson](05-spring-boot/B13_MultithreadingInSpringBoot.md) · [Back to contents](#contents)
+
+**🧬 The story:** one request at a time is too slow → **Tomcat: a thread per request** (200) → 200 threads share ONE bean, so fields mix up users → **stateless beans** → slow side work makes users wait (453 ms) → **@Async** (Spring 3.0): 54 ms → unsafe default pools, lost context, several servers → **your own ThreadPoolTaskExecutor + TaskDecorator + database locks**.
+
+```mermaid
+flowchart LR
+    R["request"] --> T["Tomcat thread<br/>(1 of 200)"]
+    T --> B["ONE singleton bean<br/>keep it stateless"]
+    B -.->|"@Async"| P["your pool: core, queue,<br/>max, rejection"]
+    B --> D[("database:<br/>atomic UPDATE, @Version")]
+```
+
+**🧠 Must remember**
+1. **Tomcat** runs every request on its own thread: `server.tomcat.threads.max=200`. Logs show it as `[nio-8080-exec-1]`.
+2. **Singleton bean = one object for every thread.** No request data in fields (Rahul got Priya's receipt). Only final fields holding beans or settings.
+3. **Safe to share:** stateless beans, RestTemplate, WebClient, ObjectMapper, JdbcTemplate. **Not safe:** HashMap fields, counters, SimpleDateFormat.
+4. **@Async** + `@EnableAsync`: the user waited **54 ms instead of 453**. Call it from another bean, make it public, and return void or CompletableFuture.
+5. **Pools:** plain Spring makes a thread per call. Boot has 8 threads and an **unlimited queue**. Define a `ThreadPoolTaskExecutor` with a **limited queue**.
+6. **The order a pool uses:** core threads → queue → extra threads (only when the queue is full) → rejection. `CallerRunsPolicy` = back-pressure.
+7. **ThreadLocal context** (MDC, security, the transaction) doesn't follow the job: use a **TaskDecorator**. An @Async job runs outside the caller's transaction: use **@TransactionalEventListener(AFTER_COMMIT)**.
+8. **@Scheduled:** 1 thread by default (a job due at 100 ms started at 616 ms), so raise the pool size. With several servers, use **ShedLock**.
+9. **RabbitMQ:** `concurrency=3`, `max-concurrency=10`. Consumer threads share the listener bean, the order isn't guaranteed, and handlers must be idempotent.
+10. **synchronized protects ONE JVM:** with 2 servers, Rs 500 instead of Rs 400. Lock in the database: an atomic UPDATE, `@Version`, or `SELECT ... FOR UPDATE`.
+
+**⚠️ Top traps**
+- A request-data field in a singleton bean.
+- Self-invocation of an @Async method.
+- `synchronized` for money when several instances run.
+
+**🎯 30-second answer:** "Spring Boot is multithreaded by default: Tomcat runs each request on its own thread, and they all share singleton beans, so my services are stateless. Slow side work like SMS goes to @Async on my own ThreadPoolTaskExecutor with a limited queue, and parallel calls use CompletableFuture on that executor with timeouts. I copy the MDC with a TaskDecorator, run async work after the commit, and for money I lock in the database, because synchronized doesn't work across instances."
+
+**🔑 Memory hook:** *"200 waiters, one shared kitchen board: write the table number in your own notepad (stateless). Hand desserts to helpers (@Async) with a limited ticket rail (a bounded queue). Two restaurants, one bank account: only the bank can lock it (the database)."*
+
+**🗣️ Say it aloud (no peeking):**
+1. Why must a Spring service be stateless? Tell the Rahul and Priya receipt story.
+2. How do you set up @Async properly? Name the 4 pool settings, and say the order the pool uses them in.
+3. Why doesn't synchronized stop a double debit in production, and what do you use instead?
 
 ---
