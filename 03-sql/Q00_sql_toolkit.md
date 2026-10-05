@@ -25,16 +25,47 @@ A fourth department, **SECURITY**, has nobody in it yet.
 
 ## 🧬 Why does this exist? The story
 
-Every SQL tool in this lesson fixes a side effect of the one before it:
+Every SQL tool in this lesson fixes a side effect of the one before it. Here's the story.
 
-1. **❌ The pain:** store the department name in every employee row, and renaming "PAYMENTS" means updating 1,000 rows. One typo, like "PAYMNETS", creates a fake department.
-2. **✅ The fix (the relational model, E. F. Codd, 1970): split the data into tables.** Each fact is stored once. `employees.department_id` points to `departments.id`.
-3. **❌ New pain:** a report needs the employee **and** the department name, and now they're in two tables.
-4. **✅ The fix: JOIN** puts them side by side again. **LEFT JOIN** also keeps rows with no match, like the empty SECURITY department.
-5. **❌ New pain:** managers want totals, not 8 lines: head count and salary per department. And `WHERE` can't filter on a count, because it runs before the groups exist.
-6. **✅ The fix: GROUP BY** makes one row per pile, and **HAVING** filters the piles.
-7. **❌ New pain:** GROUP BY squashes the rows, so the names are lost. "Rank people inside their department" needed messy self-joins and subqueries.
-8. **✅ The fix (the SQL:2003 standard; PostgreSQL 8.4 in 2009, MySQL 8.0 in 2018): window functions.** They calculate across rows (a rank, an average) and keep every row. The same PostgreSQL and MySQL versions added **CTEs** (`WITH`), which give each step of a long query a name.
+### Chapter 1 · The department name in every row
+
+**🧑‍💻 What people were doing:** storing the department name inside every employee row.
+
+**😣 The problem they hit:** renaming "PAYMENTS" meant updating **1,000 rows**. One typo, like "PAYMNETS", created a fake department.
+
+**☕ What E. F. Codd said (1970):** "**Split the data into tables**, store each fact once, and link the tables with ids." → **the relational model**: `employees.department_id` points to `departments.id`
+
+**✅ How it solved the problem:** a rename now changes **1 row**. **But…** a report needs the employee **and** the department name, and they're in two tables now.
+
+### Chapter 2 · The data is in two tables
+
+**🧑‍💻 What people were doing:** writing a report that needs each employee next to their department name.
+
+**😣 The problem they hit:** one query can read only one table at a time.
+
+**☕ What SQL said:** "Use **JOIN** to put matching rows side by side." → **JOIN**, and **LEFT JOIN**, which also keeps rows with no match, like the empty SECURITY department
+
+**✅ How it solved the problem:** one result with both names. **But…** managers want totals, not 8 lines.
+
+### Chapter 3 · Managers want totals
+
+**🧑‍💻 What people were doing:** trying to get the head count and salary total per department.
+
+**😣 The problem they hit:** `WHERE` can't filter on a count, because it runs **before** the groups exist.
+
+**☕ What SQL said:** "**GROUP BY** makes one row per pile, and **HAVING** filters the piles after they're counted." → **GROUP BY + HAVING**
+
+**✅ How it solved the problem:** one summary row per department. **But…** GROUP BY squashes the rows, so the names are lost.
+
+### Chapter 4 · GROUP BY lost the names
+
+**🧑‍💻 What people were doing:** trying to "rank people inside their department".
+
+**😣 The problem they hit:** they needed messy self-joins and subqueries, because GROUP BY throws away the individual rows.
+
+**☕ What SQL said:** "We'll calculate across rows (a rank, an average) and **keep every row**." → **window functions (the SQL:2003 standard; PostgreSQL 8.4 in 2009, MySQL 8.0 in 2018)**. The same versions added **CTEs** (`WITH`), which give each step of a long query a name.
+
+**✅ How it solved the problem:** every row stays, with its rank or average written next to it.
 
 ```mermaid
 flowchart TD

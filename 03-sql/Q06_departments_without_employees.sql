@@ -53,15 +53,21 @@
 -- ============================================================================
 -- WHY THESE TOOLS EXIST (the story, read it after your own try)
 -- ============================================================================
--- Pain 1: an INNER JOIN keeps only departments that match an employee, so the
---         empty SECURITY department simply disappears. You can't see what
---         isn't there.
--- Fix 1 : LEFT JOIN keeps every department, with NULLs where nobody matched.
---         Then WHERE e.id IS NULL keeps exactly the empty ones.
--- Pain 2: NOT IN looks simpler, but one NULL in its list makes it return
---         nothing at all.
--- Fix 2 : NOT EXISTS asks "is there any matching employee?", and it's safe
---         with NULLs.
+-- Chapter 1: you can't see what isn't there
+--   What people did  : an INNER JOIN of departments and employees
+--   Problem they hit : it keeps only departments that match an employee, so
+--                      the empty SECURITY department simply disappears.
+--   What SQL said    : "LEFT JOIN keeps every department, with NULLs where
+--                      nobody matched. Then WHERE e.id IS NULL keeps exactly
+--                      the empty ones."
+--   How it solved it : SECURITY shows up. But... people tried a shortcut.
+--
+-- Chapter 2: NOT IN looked simpler
+--   What people did  : WHERE id NOT IN (SELECT department_id FROM employees)
+--   Problem they hit : one NULL in that list makes it return nothing at all.
+--   What SQL said    : "Use NOT EXISTS. It asks 'is there any matching
+--                      employee?', and it's safe with NULLs."
+--   How it solved it : the right answer, even when the list has a NULL.
 
 
 -- ============================================================================

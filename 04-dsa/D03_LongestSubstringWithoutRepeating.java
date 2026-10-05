@@ -62,16 +62,21 @@ public class D03_LongestSubstringWithoutRepeating {
     // =========================================================================
     // WHY THE BETTER WAY EXISTS (the story)
     // =========================================================================
-    //   The pain  : brute force throws its work away. Start 2 already checked
-    //               "wke". Then start 3 checks k and e again from scratch.
-    //               Every start re-reads almost the same letters: O(n^2).
-    //   The clue  : when a letter repeats, only the FRONT of the run is broken.
-    //               Everything after the old copy is still unique, so keep it.
-    //   The fix   : a sliding window. The right end only moves forward, and the
-    //               left end jumps past the old copy. Each letter enters the
-    //               window once, so it's O(n).
-    //   The detail: a map of each letter's LAST position lets left jump there
-    //               in one step, instead of walking.
+    //   What you did first : brute force. From every start, read letters until
+    //                        one repeats.
+    //   Problem you hit    : it throws its work away. Start 2 already checked
+    //                        "wke". Then start 3 checks k and e again from
+    //                        scratch. Every start re-reads almost the same
+    //                        letters: O(n^2).
+    //   What a smarter programmer said:
+    //                        "When a letter repeats, only the FRONT of the run
+    //                        is broken. Everything after the old copy is still
+    //                        unique, so keep it. Slide a window: the right end
+    //                        only moves forward, and the left end jumps past
+    //                        the old copy."
+    //   How it solved it   : each letter enters the window once, so it's O(n).
+    //                        A map of each letter's LAST position lets left
+    //                        jump there in one step, instead of walking.
 
     // =========================================================================
     // APPROACH 2: a sliding window (the answer interviewers want)

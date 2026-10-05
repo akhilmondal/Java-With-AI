@@ -17,26 +17,57 @@
 
 In 1994, four authors (the "Gang of Four") wrote the book *Design Patterns*. They didn't invent these ideas. They noticed that teams kept hitting the **same problems** and solving them the **same way**, so they gave each fix a name. With a name, you can say "use a strategy" instead of explaining 50 lines.
 
-**Every pattern is one pain and its fix:**
+**Every pattern is one problem and its fix:**
 
-| Pattern | ❌ The pain | ✅ The fix |
+| Pattern | ❌ The problem people hit | ✅ What the pattern says |
 |---|---|---|
-| **Singleton** | two config objects or connection pools get created. They waste memory and can disagree with each other | exactly one shared instance |
+| **Singleton** | two config objects or connection pools get created. They waste memory and can disagree with each other | make exactly one shared instance |
 | **Builder** | `new PaymentRequest("TXN1001", 1500, "INR", "SETU", null, "electricity bill")`: which null is which? | set fields by name, then `build()` checks them |
 | **Factory** | `if (type == PAYU) new PayUGateway() else if ...` copied in 10 places | one place decides which class to create |
 | **Strategy** | a giant if-else of fee rules inside the payment method | each rule is its own class behind one interface |
 | **Proxy** | writing "begin transaction, commit, rollback" by hand in every service method | a stand-in wraps the real object and adds it around each call |
 
-**Even one pattern has its own story.** Singleton is the most asked, so here's how it grew:
+**Even one pattern has its own story.** Singleton is the most asked, so here's how it grew.
 
-1. **❌ The pain:** two config objects waste memory and disagree.
-2. **✅ The fix: Singleton.** A private constructor, and the instance is created on first use.
-3. **❌ New pain:** two threads both see `null` and create **2** instances (the demo shows it).
-4. **✅ The fix: make `getInstance()` synchronized.**
-5. **❌ New pain:** now every call waits for the lock, even long after the instance exists.
-6. **✅ The fix: double-checked locking.** Skip the lock once the instance exists. It needs `volatile`, and it's only been reliable since Java 5.
-7. **❌ New pain:** it's easy to get wrong.
-8. **✅ The fix: a holder class or an enum.** The JVM itself guarantees one instance, with no locking code.
+### Chapter 1 · Two config objects
+
+**🧑‍💻 What people were doing:** writing `new AppConfig()` wherever they needed the config.
+
+**😣 The problem they hit:** two config objects wasted memory, and could hold different values.
+
+**☕ What experienced programmers said:** "Make the constructor **private**, and create the one instance on first use." → **Singleton**
+
+**✅ How it solved the problem:** only one config object. **But…** two threads can break it.
+
+### Chapter 2 · Two threads made two singletons
+
+**🧑‍💻 What people were doing:** `if (instance == null) instance = new AppConfig();` inside `getInstance()`.
+
+**😣 The problem they hit:** two threads both saw `null` at the same moment, and created **2** instances (the demo shows it).
+
+**☕ What experienced programmers said:** "Make `getInstance()` **synchronized**, so only one thread can be inside at a time."
+
+**✅ How it solved the problem:** exactly one instance. **But…** now every call waits for the lock.
+
+### Chapter 3 · Waiting for a lock, forever
+
+**🧑‍💻 What people were doing:** calling `getInstance()` thousands of times a second.
+
+**😣 The problem they hit:** every call waited for the lock, even long after the instance existed.
+
+**☕ What experienced programmers said:** "Check first **without** the lock. Lock only if it's still null, then check again inside." → **double-checked locking**. It needs `volatile`, and it's only been reliable since Java 5.
+
+**✅ How it solved the problem:** no lock once the instance exists. **But…** it's easy to get wrong.
+
+### Chapter 4 · Too easy to get wrong
+
+**🧑‍💻 What people were doing:** copying double-checked locking code, and sometimes forgetting `volatile`.
+
+**😣 The problem they hit:** a tiny mistake made a bug that appears only under load.
+
+**☕ What experienced programmers said:** "Let the **JVM** do it. It creates a class only once, so use a **holder class** or an **enum**."
+
+**✅ How it solved the problem:** the JVM guarantees one instance, with no locking code at all.
 
 ```mermaid
 flowchart TD

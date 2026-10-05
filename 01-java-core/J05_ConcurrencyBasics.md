@@ -10,16 +10,47 @@
 
 ## 🧬 Why does this exist? The story
 
-Why does Java have so many tools for threads? Each one fixed the pain the one before it left behind:
+Why does Java have so many tools for threads? Each one fixed the problem the one before it left behind.
 
-1. **❌ The pain:** two threads run `count++` on one counter. It's really 3 steps (read, add, write), so the steps overlap and updates get lost. 2 × 100,000 gave about **134,000**.
-2. **✅ The fix (Java 1.0, 1996): `synchronized`.** A lock: only one thread at a time runs that code. Exactly **200,000**.
-3. **❌ New pain:** a lock is heavy for something tiny, like a stop flag. And with no lock at all, a thread may keep reading its own **old cached copy** of the flag and never stop.
-4. **✅ The fix: `volatile`.** Every read sees the latest write. The keyword was in Java 1.0, but its rules were only made clear and reliable in **Java 5 (2004)**.
-5. **❌ New pain:** volatile doesn't fix `count++` (still 3 steps). And synchronized makes every other thread **wait**.
-6. **✅ The fix (Java 5, 2004): `AtomicInteger`.** It uses a CPU instruction, compare-and-set: "write 6 only if it's still 5, otherwise retry". Nothing is lost, and no thread waits.
-7. **❌ New pain:** shared maps. HashMap loses entries with 2 threads. Hashtable and `synchronizedMap` are safe, but one lock covers the **whole map**, so every thread waits in one line.
-8. **✅ The fix (Java 5, 2004): `ConcurrentHashMap`.** It locks only a small part (since Java 8, one bucket), and reads don't lock at all. Many threads work at the same time.
+### Chapter 1 · Two threads, one counter, lost updates
+
+**🧑‍💻 What people were doing:** two **threads** (two workers running code at the same time) each ran `count++` 100,000 times on one shared counter.
+
+**😣 The problem they hit:** `count++` is really 3 steps: read, add, write. The steps of the two threads overlapped, and updates got lost. They expected **200,000** and got about **134,000**.
+
+**☕ What the Java team said:** "We'll give you a **lock**. Only one thread at a time can run that code." → **`synchronized` (Java 1.0, 1996)**
+
+**✅ How it solved the problem:** exactly **200,000**. **But…** a lock is heavy for something tiny, like a stop flag.
+
+### Chapter 2 · A stop flag that never stopped
+
+**🧑‍💻 What people were doing:** one thread sets `running = false`. Another thread loops `while (running)`.
+
+**😣 The problem they hit:** with no lock, the looping thread may keep reading its own **old cached copy** of the flag (a private copy kept close to the CPU). It never sees `false`, and never stops.
+
+**☕ What the Java team said:** "Mark the field `volatile`, and every read will see the latest write." → **`volatile`**. The keyword was in Java 1.0, but its rules were only made clear and reliable in **Java 5 (2004)**.
+
+**✅ How it solved the problem:** the flag works with no lock. **But…** volatile can't fix `count++` (it's still 3 steps), and synchronized makes the other threads **wait**.
+
+### Chapter 3 · Safe counting without waiting
+
+**🧑‍💻 What people were doing:** using `synchronized` around every counter update.
+
+**😣 The problem they hit:** while one thread held the lock, every other thread stood in line and did nothing.
+
+**☕ What the Java team said:** "We'll use a CPU instruction called **compare-and-set**: 'write 6 only if it's still 5, otherwise try again'." → **`AtomicInteger` (Java 5, 2004)**
+
+**✅ How it solved the problem:** no update is lost, and no thread waits in line. **But…** shared maps had the same problem.
+
+### Chapter 4 · One lock for a whole map
+
+**🧑‍💻 What people were doing:** sharing one map between many threads.
+
+**😣 The problem they hit:** HashMap loses entries with 2 threads. Hashtable and `synchronizedMap` are safe, but one lock covers the **whole map**, so every thread waits in one line.
+
+**☕ What the Java team said:** "We'll lock only a small part of the map (since Java 8, one bucket), and reading won't lock at all." → **`ConcurrentHashMap` (Java 5, 2004)**
+
+**✅ How it solved the problem:** many threads work on the map at the same time, safely.
 
 ```mermaid
 flowchart TD

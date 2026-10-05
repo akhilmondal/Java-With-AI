@@ -10,16 +10,47 @@
 
 ## 🧬 Why does this exist? The story
 
-Every part of HashMap was added to kill one specific pain. Here's the story, in the order it happened:
+Why does HashMap have buckets, no locks, and even trees inside it? Each part was added after programmers hit a real problem. Here's what happened, in order.
 
-1. **❌ The pain:** you keep 1 lakh employees in a list. To find employee 101, you check them one by one: up to **1,00,000 checks** for every search.
-2. **✅ The fix (Java 1.0, 1996): hashing, in `Hashtable`.** Turn the key into a number, and jump straight to one bucket, like opening one drawer. About **1 check** instead of 1 lakh.
-3. **❌ New pain:** Hashtable put a **lock** (`synchronized`) on every method. Most maps are used by one thread, so everyone paid for locks they didn't need.
-4. **✅ The fix (Java 1.2, 1998): `HashMap`.** The same idea, with no locks. It also allows one null key.
-5. **❌ New pain:** when many threads share one HashMap, entries get lost. And Hashtable made threads wait in one line, because its lock covers the whole map.
-6. **✅ The fix (Java 5, 2004): `ConcurrentHashMap`.** Many threads can work at the same time, safely. That story is in J05.
-7. **❌ New pain:** many keys can land in **one** bucket. A bad hashCode can do it, and in 2011 researchers showed that attackers could do it on purpose by sending keys that all collide ("hash flooding"). A bucket with 1,000 keys means up to 1,000 checks again.
-8. **✅ The fix (Java 8, 2014): a crowded bucket becomes a sorted tree.** Finding one of those 1,000 keys now takes about **10** checks.
+### Chapter 1 · Searching 1 lakh employees was slow
+
+**🧑‍💻 What people were doing:** they kept employees in a list. To find employee 101, the code checked them one by one.
+
+**😣 The problem they hit:** with 1 lakh employees, one search could take up to **1,00,000 checks**. And that was for every single search.
+
+**☕ What the Java team said:** "We'll turn each key into a number, and use that number to jump straight to one drawer (a **bucket**). You open one drawer, not the whole cupboard." → **Hashing, in `Hashtable` (Java 1.0, 1996)**
+
+**✅ How it solved the problem:** a search now takes about **1 check** instead of 1 lakh. **But…** Hashtable put a **lock** (only one thread can use it at a time) on every method.
+
+### Chapter 2 · Everyone paid for locks they didn't need
+
+**🧑‍💻 What people were doing:** most programs used a map from just **one thread** (one worker running the code).
+
+**😣 The problem they hit:** every `get` and `put` still took the lock and gave it back. That's wasted time on every call, for safety nobody needed.
+
+**☕ What the Java team said:** "We'll give you the same map with no locks. If you share it between threads, ask for safety separately." → **`HashMap` (Java 1.2, 1998)**. It also allows one null key.
+
+**✅ How it solved the problem:** one-thread code got fast. **But…** when many threads share one HashMap, entries get lost.
+
+### Chapter 3 · Many threads, one map
+
+**🧑‍💻 What people were doing:** a server handles many users at once, so many threads touch the same map.
+
+**😣 The problem they hit:** HashMap lost entries. Hashtable was safe, but its one lock covers the **whole map**, so every thread waited in one line.
+
+**☕ What the Java team said:** "We'll give you a map where many threads can work at the same time, safely." → **`ConcurrentHashMap` (Java 5, 2004)**. Its full story is in J05.
+
+**✅ How it solved the problem:** safe, and no long queue of waiting threads.
+
+### Chapter 4 · Too many keys in one drawer
+
+**🧑‍💻 What people were doing:** using HashMap everywhere, and trusting it to find a key in about 1 check.
+
+**😣 The problem they hit:** many keys can land in **one** bucket. A bad hashCode can do it. In 2011, researchers showed attackers could do it on purpose, by sending keys that all collide ("hash flooding"). A bucket with 1,000 keys means up to **1,000 checks** again.
+
+**☕ What the Java team said:** "When one drawer gets crowded, we'll arrange its keys as a **sorted tree**, where each step cuts the search in half." → **Crowded buckets become trees (Java 8, 2014)**
+
+**✅ How it solved the problem:** finding one of those 1,000 keys now takes about **10 checks**.
 
 ```mermaid
 flowchart TD

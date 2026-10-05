@@ -60,17 +60,30 @@
 -- ============================================================================
 -- WHY THESE TOOLS EXIST (the story, read it after your own try)
 -- ============================================================================
--- Pain 1: you want the emails that appear more than once. WHERE COUNT(*) > 1
---         is an error, because WHERE runs before the piles (and their counts)
---         exist.
--- Fix 1 : GROUP BY email, then HAVING COUNT(*) > 1. HAVING exists for exactly
---         this: it filters the piles after they're counted.
--- Pain 2: GROUP BY shows each email once, but to delete the extra copies
---         you need their ids.
--- Fix 2 : number the copies with ROW_NUMBER() OVER (PARTITION BY email ...),
---         or keep MIN(id) per email and delete the rest (follow-ups 2 and 3).
--- Pain 3: cleaning up once doesn't stop new duplicates tomorrow.
--- Fix 3 : a UNIQUE constraint, so the database itself refuses them.
+-- Chapter 1: counting the copies
+--   What people did  : WHERE COUNT(*) > 1, to find emails that appear twice
+--   Problem they hit : an error. WHERE runs before the piles (and their
+--                      counts) exist.
+--   What SQL said    : "GROUP BY email, then filter the piles with HAVING
+--                      COUNT(*) > 1." HAVING exists for exactly this.
+--   How it solved it : the repeated emails come back. But... you can't delete
+--                      them yet.
+--
+-- Chapter 2: which rows do I delete?
+--   What people did  : GROUP BY email to find the duplicates
+--   Problem they hit : it shows each email once, but to delete the extra
+--                      copies you need their ids.
+--   What SQL said    : "Number the copies with ROW_NUMBER() OVER (PARTITION BY
+--                      email ...), or keep MIN(id) per email and delete the
+--                      rest." (follow-ups 2 and 3)
+--   How it solved it : the extra copies are gone. But... new ones can arrive.
+--
+-- Chapter 3: the duplicates came back
+--   What people did  : cleaned up once
+--   Problem they hit : new duplicates got in the next day.
+--   What SQL said    : "Add a UNIQUE constraint, and the database itself will
+--                      refuse them."
+--   How it solved it : duplicates can't get in at all.
 
 
 -- ============================================================================

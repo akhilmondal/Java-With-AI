@@ -10,16 +10,47 @@
 
 ## 🧬 Why does this exist? The story
 
-Why does Java have so many lists and maps? Each one arrived to fix a pain the older ones had:
+Why does Java have so many lists and maps? Each one arrived after programmers hit a problem with the older ones.
 
-1. **❌ The pain:** a Java array has a **fixed size**. `new String[10]` holds 10 transactions, and the 11th doesn't fit. You'd have to make a bigger array and copy everything yourself.
-2. **✅ The fix (Java 1.0, 1996): `Vector` and `Hashtable`.** A list and a map that grow by themselves.
-3. **❌ New pain:** both put a **lock** on every method, which is wasted time when one thread uses them. They also had no common interface, so code written for one couldn't switch to another.
-4. **✅ The fix (Java 1.2, 1998): the Collections Framework.** Common interfaces (`List`, `Set`, `Map`) and fast classes with no locks: `ArrayList`, `LinkedList`, `HashMap` and `TreeMap`. Each has a **shape** that's fast for one job: ArrayList for reading by index, LinkedList for adding at the ends, TreeMap for sorted keys.
-5. **❌ New pain:** HashMap forgets the order you put things in. For "recent billers in the order they were added", or for a cache, you need that order.
-6. **✅ The fix (Java 1.4, 2002): `LinkedHashMap`.** A HashMap plus an arrival register. With one flag, it becomes an LRU cache in 10 lines (Step 7).
-7. **❌ New pain:** people used LinkedList as a queue. But its nodes are scattered in memory, so it's slow, and it uses more memory.
-8. **✅ The fix (Java 6, 2006): `ArrayDeque`.** A queue and stack built on an array, which is faster.
+### Chapter 1 · Arrays have a fixed size
+
+**🧑‍💻 What people were doing:** storing transactions in an array, `new String[10]`.
+
+**😣 The problem they hit:** the 11th transaction doesn't fit. You had to make a bigger array and copy everything yourself.
+
+**☕ What the Java team said:** "We'll give you a list and a map that **grow by themselves**." → **`Vector` and `Hashtable` (Java 1.0, 1996)**
+
+**✅ How it solved the problem:** no more copying arrays by hand. **But…** both put a **lock** (one thread at a time) on every method, and they had no common interface.
+
+### Chapter 2 · Locks everywhere, and no common shape
+
+**🧑‍💻 What people were doing:** using Vector from one thread, and writing methods that took a `Vector` as input.
+
+**😣 The problem they hit:** the locks were wasted time. And with no shared **interface** (a common contract like "every list has `get` and `add`"), switching to another class meant rewriting code.
+
+**☕ What the Java team said:** "We'll define common interfaces, `List`, `Set` and `Map`, and give you fast classes with no locks. Each one is shaped for one job." → **the Collections Framework (Java 1.2, 1998)**: `ArrayList` for reading by index, `LinkedList` for adding at the ends, `HashMap`, and `TreeMap` for sorted keys
+
+**✅ How it solved the problem:** you write code against `List`, and swap the class freely. **But…** HashMap forgets the order you put things in.
+
+### Chapter 3 · HashMap forgot the order
+
+**🧑‍💻 What people were doing:** keeping "recent billers" or a cache in a HashMap.
+
+**😣 The problem they hit:** when they printed it, the billers came out in a mixed-up order, not the order they were added.
+
+**☕ What the Java team said:** "We'll give you a HashMap that also keeps an **arrival register** (a list in the order things came in)." → **`LinkedHashMap` (Java 1.4, 2002)**
+
+**✅ How it solved the problem:** the order is kept. With one flag, it even becomes an LRU cache in 10 lines (Step 7). **But…** people were still using LinkedList as a queue.
+
+### Chapter 4 · LinkedList was a slow queue
+
+**🧑‍💻 What people were doing:** `Queue<String> q = new LinkedList<>()`.
+
+**😣 The problem they hit:** each LinkedList item is a separate box scattered in memory. It's slow to walk through, and it uses more memory.
+
+**☕ What the Java team said:** "We'll build a queue and a stack on an **array** instead." → **`ArrayDeque` (Java 6, 2006)**
+
+**✅ How it solved the problem:** a faster queue that uses less memory.
 
 ```mermaid
 flowchart TD

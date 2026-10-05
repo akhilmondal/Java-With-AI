@@ -10,16 +10,47 @@
 
 ## 🧬 Why does this exist? The story
 
-Java didn't add features for fashion. Each one deletes a bug you've probably written, or boilerplate you've typed many times.
+Java didn't add features for fashion. Each one deletes a bug you've probably written, or code you've typed many times. Here are the four biggest; the table below the diagram lists the rest.
 
-1. **❌ The pain:** passing one line of logic, like "amount above 10,000", needed a 6-line anonymous class.
-2. **✅ The fix (Java 8, 2014): lambdas and streams.** `p -> p.amount() > 10_000`.
-3. **❌ New pain:** in the old switch, a forgotten `break` fell through into the next case. That's a classic bug.
-4. **✅ The fix (Java 14, 2020): switch expressions.** With the arrow form there's no fall-through, it returns a value, and it checks every enum value.
-5. **❌ New pain:** a simple DTO needed about 40 lines: constructor, getters, equals, hashCode and toString. Many teams used Lombok to hide it.
-6. **✅ The fix (Java 16, 2021): records.** One line.
-7. **❌ New pain:** one heavy OS thread per request. While it waits for an HTTP or DB reply, it just sits idle, and pools stop at a few hundred threads.
-8. **✅ The fix (Java 21, 2023): virtual threads.** Threads so cheap that lakhs of them can wait at once.
+### Chapter 1 · Six lines for one line of logic
+
+**🧑‍💻 What people were doing:** passing a rule like "amount above 10,000" to a method.
+
+**😣 The problem they hit:** it needed a 6-line anonymous class (a class with no name, written inline) to carry one line of logic.
+
+**☕ What the Java team said:** "Just pass the logic itself." → **lambdas and streams (Java 8, 2014)**: `p -> p.amount() > 10_000`
+
+**✅ How it solved the problem:** one line instead of six.
+
+### Chapter 2 · The forgotten break
+
+**🧑‍💻 What people were doing:** writing the old `switch` with a `break` after each case.
+
+**😣 The problem they hit:** forget one `break`, and the code **falls through** into the next case. That's a classic bug.
+
+**☕ What the Java team said:** "Use the arrow form. There's no fall-through, it returns a value, and we'll check that you covered every enum value." → **switch expressions (Java 14, 2020)**
+
+**✅ How it solved the problem:** the fall-through bug can't happen any more.
+
+### Chapter 3 · 40-line DTOs
+
+**🧑‍💻 What people were doing:** writing a simple DTO (a class that only carries data).
+
+**😣 The problem they hit:** about 40 lines: constructor, getters, equals, hashCode and toString. Many teams added Lombok just to hide it.
+
+**☕ What the Java team said:** "Write **one line**, and we'll generate the rest." → **records (Java 16, 2021)**
+
+**✅ How it solved the problem:** one line, no Lombok needed.
+
+### Chapter 4 · Threads sitting idle
+
+**🧑‍💻 What people were doing:** using one heavy **OS thread** (a thread managed by the operating system) per request.
+
+**😣 The problem they hit:** while it waits for an HTTP or DB reply, the thread just sits there. Pools stop at a few hundred threads.
+
+**☕ What the Java team said:** "We'll give you threads so cheap that **lakhs** of them can wait at once." → **virtual threads (Java 21, 2023)**
+
+**✅ How it solved the problem:** simple blocking code can now serve lakhs of waiting requests.
 
 ```mermaid
 flowchart TD

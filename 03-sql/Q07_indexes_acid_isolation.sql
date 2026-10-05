@@ -8,16 +8,32 @@
    These are the usual follow-ups after the six query problems.
 
    THE STORY (why each tool exists)
-     Pain: finding one payment among 1 lakh rows means reading every row
-       -> Fix: an INDEX, a sorted B-tree, like the index at the back of a book
-     Pain: a transfer crashes after the debit but before the credit,
-           and Rs 300 vanishes
-       -> Fix: a TRANSACTION with ACID: all or nothing
-     Pain: running transactions one at a time is safe but far too slow, and
-           running them together lets them see each other's half-done work
-       -> Fix: ISOLATION LEVELS, so you choose how much safety you pay for
-     Pain: two debits read the same balance of 700, and one update is lost
-       -> Fix: an atomic UPDATE, SELECT ... FOR UPDATE, or a version column
+     Chapter 1: finding one payment was slow
+       What people did : SELECT * FROM payments WHERE txn_id = 'TXN77777'
+       Problem they hit: with 1 lakh rows, the database read every row.
+       What SQL said   : "Build an INDEX, a sorted B-tree, like the index at
+                         the back of a book."
+       How it solved it: it jumps to the row in a few steps.
+     Chapter 2: money vanished in a crash
+       What people did : debit one account, then credit the other
+       Problem they hit: the server crashed after the debit but before the
+                         credit, and Rs 300 vanished.
+       What SQL said   : "Put both in a TRANSACTION with ACID: all or nothing."
+       How it solved it: either both happen, or neither does.
+     Chapter 3: safe was too slow
+       What people did : ran transactions one at a time, to be safe
+       Problem they hit: far too slow. But running them together let them see
+                         each other's half-done work.
+       What SQL said   : "Pick an ISOLATION LEVEL, so you choose how much
+                         safety you pay for."
+       How it solved it: you trade speed for safety on purpose.
+     Chapter 4: a lost update
+       What people did : two debits read the same balance of 700, and each
+                         wrote its own new balance
+       Problem they hit: one update was lost.
+       What SQL said   : "Use an atomic UPDATE, SELECT ... FOR UPDATE, or a
+                         version column."
+       How it solved it: the second debit works on the first one's result.
 
    HOW TO RUN
      Paste Q00_setup.sql into db-fiddle's left box and this file into the right

@@ -1,4 +1,4 @@
-# Lesson template (v3: story first)
+# Lesson template (v4: story first, told as chapters)
 
 These are skeletons for:
 - the `.md` lesson
@@ -23,12 +23,21 @@ The filled-in reference is `01-java-core/J03_StringsAndStringPool.md` (the Strin
 
 ## 🧬 Why does this exist? The story
 
-Nothing here was added for fun. Each piece fixed a real pain:
+<One hook line: what this story explains, e.g. "Why does Java have three text classes? Here's what happened.">
 
-1. **❌ The pain:** <what hurt before, with a small number>
-2. **✅ The fix (<version>, <year>):** <what was added, and how it removed the pain>
-3. **❌ New pain:** <what that fix made hard or slow>
-4. **✅ The next fix (<version>):** <what was added next>
+### Chapter 1 · <the problem, in plain words>
+
+**🧑‍💻 What people were doing:** <the normal code back then, 1 or 2 sentences>
+
+**😣 The problem they hit:** <what went wrong for a programmer, with a small number>
+
+**☕ What the Java team said:** "We'll give you <X>, so that <the problem> never happens again." → **<Feature> (Java <version>, <year>)**
+
+**✅ How it solved the problem:** <what is different now, same numbers>. **But…** <the new problem it created, one sentence>
+
+### Chapter 2 · <the new problem>
+
+<same four lines; 3 to 5 chapters in all; explain every technical word in brackets the first time>
 
 ```mermaid
 flowchart TD
@@ -167,6 +176,20 @@ flowchart TD
  * READ FIRST   <ID>_<Name>.md
  */
 ~~~
+
+## Story block in code files (`.sql` WHY THIS TOOL EXISTS, DSA WHY THE BETTER WAY EXISTS)
+
+~~~text
+-- Chapter 1: <the problem, in plain words>
+--   What people did  : <the normal query or code>
+--   Problem they hit : <what went wrong, with numbers from the data>
+--   What SQL said    : "We'll give you <X>, so that <problem> can't happen."
+--   How it solved it : <what is different now>. But... <new problem, if any>
+--
+-- Chapter 2: ...
+~~~
+
+In DSA files the labels are `What you did first`, `Problem you hit`, `What a smarter programmer said` and `How it solved it`. Use `//` comments, and line the colons up.
 
 ## QUICK REVISION block (`.java` / `.sql`)
 

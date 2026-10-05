@@ -55,15 +55,19 @@ public class D02_ValidAnagram {
     // =========================================================================
     // WHY THE BETTER WAY EXISTS (the story)
     // =========================================================================
-    //   The pain : sorting does more work than the question needs. It puts
-    //              every letter in ORDER, which costs O(n log n), but we only
-    //              need to know HOW MANY of each letter there are.
-    //   The clue : there are only 26 possible letters, so 26 counters are
-    //              enough, however long the words are.
-    //   The fix  : count instead of sort. One pass, O(n) time, and the space
-    //              is always 26 slots, so O(1).
-    //   Its limit: 26 slots only work for a to z. For any characters (Hindi,
-    //              emoji, uppercase), approach 2b swaps the array for a HashMap.
+    //   What you did first : sort both words, then compare them.
+    //   Problem you hit    : sorting puts every letter in ORDER, which costs
+    //                        O(n log n). But we only need to know HOW MANY of
+    //                        each letter there are.
+    //   What a smarter programmer said:
+    //                        "There are only 26 letters, so 26 counters are
+    //                        enough, however long the words are. Count, don't
+    //                        sort."
+    //   How it solved it   : one pass, O(n) time, and the space is always 26
+    //                        slots, so O(1). Its limit: 26 slots only work for
+    //                        a to z. For any characters (Hindi, emoji,
+    //                        uppercase), approach 2b swaps the array for a
+    //                        HashMap.
 
     // =========================================================================
     // APPROACH 2: count the letters (the answer interviewers want)

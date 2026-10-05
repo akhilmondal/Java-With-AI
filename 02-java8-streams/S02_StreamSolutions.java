@@ -14,11 +14,13 @@ import java.util.stream.IntStream;
 /*
  * S02  Stream solutions: open this ONLY after you've tried S01 yourself
  *
- * THE STORY: before Java 8, each of these programs was a loop with a map,
- * null checks and a temporary list. Streams (Java 8) say it as one pipeline,
- * and each collector exists to answer one question: how many (counting),
- * how much (summingInt), which is biggest (maxBy), which two groups
- * (partitioningBy), and what if a key repeats (toMap's merge function).
+ * THE STORY: before Java 8, people wrote each of these programs as a loop
+ * with a map, null checks and a temporary list. The problem: the real
+ * question was buried in loop code. So Java 8 said "describe it as one
+ * pipeline, and we'll do the loop". Then each collector was added for one
+ * question people kept looping for: how many (counting), how much
+ * (summingInt), which is biggest (maxBy), which two groups (partitioningBy),
+ * and what if a key repeats (toMap's merge function).
  *
  * Each problem has:
  *   - the solution, with a comment on every step

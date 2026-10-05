@@ -69,15 +69,30 @@
 -- ============================================================================
 -- WHY THIS TOOL EXISTS (the story, read it after your own try)
 -- ============================================================================
--- Pain 1: a manager is also an employee. A separate managers table would
---         store the same person twice. Sneha would be in both tables, because
---         she reports to Meera AND manages Amit and Karan.
--- Fix 1 : keep one table, where manager_id points to another row's id.
--- Pain 2: now the manager's NAME is in another row of the SAME table.
--- Fix 2 : a self-join. Use the table twice with two aliases, e (the employee)
---         and m (the manager), and match m.id = e.manager_id.
--- Pain 3: an INNER JOIN drops Meera, because she has no manager to match.
--- Fix 3 : LEFT JOIN keeps her, and COALESCE turns her NULL into "No manager".
+-- Chapter 1: a manager is also an employee
+--   What people did  : planned a separate managers table
+--   Problem they hit : the same person would be stored twice. Sneha would be in
+--                      both tables, because she reports to Meera AND manages
+--                      Amit and Karan.
+--   What SQL said    : "Keep one table. manager_id points to another row's id."
+--   How it solved it : each person is stored once. But... the manager's NAME
+--                      is now in another row of the SAME table.
+--
+-- Chapter 2: the name is in another row
+--   What people did  : SELECT name, manager_id FROM employees
+--   Problem they hit : they got a manager id number, not the manager's name.
+--   What SQL said    : "Use the table twice, with two aliases, e (the
+--                      employee) and m (the manager), and match
+--                      m.id = e.manager_id." That's a self-join.
+--   How it solved it : each employee sits next to their manager's name.
+--                      But... Meera disappears.
+--
+-- Chapter 3: Meera disappeared
+--   What people did  : an INNER JOIN for the self-join
+--   Problem they hit : Meera has no manager to match, so she was dropped.
+--   What SQL said    : "LEFT JOIN keeps her, and COALESCE turns her NULL into
+--                      'No manager'."
+--   How it solved it : everyone is listed, even the boss.
 
 
 -- ============================================================================

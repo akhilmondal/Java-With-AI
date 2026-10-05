@@ -12,16 +12,47 @@
 
 ## 🧬 Why does this exist? The story
 
-Java's thread tools look like a long random list. They aren't. Each one fixed a pain:
+Java's thread tools look like a long random list. They aren't. Each one fixed a problem programmers hit.
 
-1. **❌ The pain:** a program with one worker does one thing at a time. Fetching 3 bills of 300 ms each takes **900 ms**, and most of that time it just **waits** for the billers to answer. Meanwhile, the laptop's other CPU cores sit idle.
-2. **✅ The fix (Java 1.0, 1996): threads, built into the language from day one.** `Thread`, `Runnable` and `synchronized` were there from the start. 3 workers wait together: **305 ms**.
-3. **❌ New pain:** threads share the same objects. Two threads doing `count++` on one counter lose updates: 2 × 100,000 gave between **124,336 and 166,131**, never 200,000.
-4. **✅ The fix (Java 1.0): `synchronized`** lets one thread in at a time, and **`volatile`** makes every thread see the latest value.
-5. **❌ New pain:** locks can cause a **deadlock**, where two threads each hold what the other needs, forever. A `new Thread()` for every task is costly. And the old way for threads to signal each other, `wait()` and `notify()`, is easy to get wrong.
-6. **✅ The fix (Java 5, 2004): the `java.util.concurrent` package**, led by Doug Lea. It brought thread pools, atomic variables, `ConcurrentHashMap`, `BlockingQueue`, `CountDownLatch`, `Semaphore` and locks with a timeout. Java 8 (2014) added `CompletableFuture`.
-7. **❌ New pain:** every Java thread is a heavy operating-system thread, with its own stack of often about 1 MB. A server can only have a few thousand, and a thread that waits for the database just sits there.
-8. **✅ The fix (Java 21, 2023): virtual threads.** They're so cheap you can have lakhs of them (J11).
+### Chapter 1 · One worker, mostly waiting
+
+**🧑‍💻 What people were doing:** running a program with one worker (one **thread**) that fetched 3 bills of 300 ms each.
+
+**😣 The problem they hit:** it took **900 ms**, and most of that time it just **waited** for the billers to answer. Meanwhile, the laptop's other CPU cores sat idle.
+
+**☕ What the Java team said:** "Threads are built into the language from day one. Start more workers, and let them wait together." → **`Thread`, `Runnable` and `synchronized` (Java 1.0, 1996)**
+
+**✅ How it solved the problem:** 3 workers wait together: **305 ms**. **But…** threads share the same objects.
+
+### Chapter 2 · A shared counter lost updates
+
+**🧑‍💻 What people were doing:** two threads ran `count++` on one counter, 100,000 times each.
+
+**😣 The problem they hit:** they got between **124,336 and 166,131**, never 200,000. The threads' steps overlapped.
+
+**☕ What the Java team said:** "`synchronized` lets **one thread in at a time**, and `volatile` makes every thread see the **latest value**." → **both in Java 1.0**
+
+**✅ How it solved the problem:** exactly 200,000. **But…** locks brought new problems.
+
+### Chapter 3 · Deadlocks and hand-made tools
+
+**🧑‍💻 What people were doing:** using locks everywhere, a `new Thread()` for every task, and `wait()` and `notify()` to signal between threads.
+
+**😣 The problem they hit:** a **deadlock**, where two threads each hold what the other needs, and both wait forever. Creating threads was costly, and `wait()`/`notify()` was easy to get wrong.
+
+**☕ What the Java team said:** "We'll give you **ready-made, tested tools**." → **the `java.util.concurrent` package (Java 5, 2004)**, led by Doug Lea: thread pools, atomic variables, `ConcurrentHashMap`, `BlockingQueue`, `CountDownLatch`, `Semaphore` and locks with a timeout. Java 8 (2014) added `CompletableFuture`.
+
+**✅ How it solved the problem:** no more building these tools by hand. **But…** every Java thread was still a heavy operating-system thread.
+
+### Chapter 4 · Threads are heavy
+
+**🧑‍💻 What people were doing:** running one thread per request on a server.
+
+**😣 The problem they hit:** each thread has its own stack of often about 1 MB, so a server can have only a few thousand. A thread that waits for the database just sits there.
+
+**☕ What the Java team said:** "We'll give you threads so cheap you can have **lakhs** of them." → **virtual threads (Java 21, 2023)**, covered in J11
+
+**✅ How it solved the problem:** waiting is cheap, so simple code scales.
 
 ```mermaid
 flowchart TD

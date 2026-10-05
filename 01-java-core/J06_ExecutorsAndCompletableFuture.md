@@ -10,16 +10,47 @@
 
 ## 🧬 Why does this exist? The story
 
-Java has four ways to run work in parallel, and each came from the pain of the one before:
+Java has four ways to run work in parallel. Each one came from a problem with the one before.
 
-1. **❌ The pain:** calling 3 billers one after another takes **900 ms** (3 × 300 ms), even though the calls don't depend on each other.
-2. **✅ The fix (Java 1.0, 1996): `new Thread()`** for each call, so the calls run at the same time.
-3. **❌ New pain:** every thread costs memory (its own stack, often about 1 MB) and time to create. 10,000 requests would mean 10,000 threads, and the server falls over. Also, a thread returns nothing, so getting the result back meant shared variables and messy waiting code.
-4. **✅ The fix (Java 5, 2004): `ExecutorService`, `Callable` and `Future`.** A small pool of **reused** threads with a task queue. `submit()` gives you a Future, a token for the result.
-5. **❌ New pain:** `Future.get()` **blocks**: your thread stands at the counter and waits. "When A finishes, do B" or "combine A and B" meant writing your own waiting code.
-6. **✅ The fix (Java 8, 2014): `CompletableFuture`.** Chain the next step (`thenApply`), combine calls (`thenCombine`, `allOf`) and add fallbacks (`exceptionally`), with **no waiting**. Java 9 added timeouts (`orTimeout`, `completeOnTimeout`).
-7. **❌ New pain:** pool threads are still heavy OS threads. A thread blocked on an HTTP call just sits there, so 200 pool threads can serve only about 200 waiting calls at once. And async chains are harder to read and debug than plain code.
-8. **✅ The fix (Java 21, 2023): virtual threads.** Threads so cheap you can have lakhs of them, so simple blocking code scales again. That's in J11.
+### Chapter 1 · Calling 3 billers one by one
+
+**🧑‍💻 What people were doing:** calling the electricity, water and gas billers one after another.
+
+**😣 The problem they hit:** 3 calls × 300 ms = **900 ms**, even though the calls don't depend on each other.
+
+**☕ What the Java team said:** "Start a **new thread** (a separate worker) for each call, so they run at the same time." → **`new Thread()` (Java 1.0, 1996)**
+
+**✅ How it solved the problem:** the 3 calls overlap. **But…** threads are costly, and they give back no result.
+
+### Chapter 2 · Threads cost a lot, and return nothing
+
+**🧑‍💻 What people were doing:** starting a `new Thread()` for every request.
+
+**😣 The problem they hit:** every thread costs memory (its own stack, often about 1 MB) and time to create. 10,000 requests meant 10,000 threads, and the server fell over. Getting the result back needed shared variables and messy waiting code.
+
+**☕ What the Java team said:** "Keep a small **pool** of threads and reuse them. Give us a task, and we'll hand you a **token** for its result." → **`ExecutorService`, `Callable` and `Future` (Java 5, 2004)**
+
+**✅ How it solved the problem:** a few reused threads work through a task queue, and `submit()` returns a Future. **But…** `Future.get()` **blocks**: your thread stands at the counter and waits.
+
+### Chapter 3 · Standing at the counter, waiting
+
+**🧑‍💻 What people were doing:** calling `future.get()` to fetch the result, then doing the next step.
+
+**😣 The problem they hit:** the thread just waited. "When A finishes, do B" or "combine A and B" meant writing your own waiting code.
+
+**☕ What the Java team said:** "Tell us **what to do next**, and we'll do it when the result arrives. You don't wait." → **`CompletableFuture` (Java 8, 2014)**: `thenApply` to chain, `thenCombine` and `allOf` to combine, `exceptionally` for a fallback. Java 9 added timeouts (`orTimeout`, `completeOnTimeout`).
+
+**✅ How it solved the problem:** no hand-written waiting code. **But…** pool threads are still heavy operating-system threads.
+
+### Chapter 4 · Threads sitting idle
+
+**🧑‍💻 What people were doing:** using a pool of 200 threads to make HTTP calls.
+
+**😣 The problem they hit:** a thread blocked on an HTTP call just sits there, so 200 threads serve only about 200 waiting calls at once. Async chains were also harder to read and debug than plain code.
+
+**☕ What the Java team said:** "We'll give you threads so cheap you can have **lakhs** of them, so simple blocking code scales again." → **virtual threads (Java 21, 2023)**, covered in J11
+
+**✅ How it solved the problem:** plain, readable code that can wait on lakhs of calls at once.
 
 ```mermaid
 flowchart TD

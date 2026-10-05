@@ -59,16 +59,25 @@
 -- ============================================================================
 -- WHY THESE TOOLS EXIST (the story, read it after your own try)
 -- ============================================================================
--- Pain 1: WHERE salary > AVG(salary) is an error. WHERE checks one row at a
---         time, but an average needs a whole department of rows.
--- Fix 1 : a correlated subquery works out the department's average for each
---         row (Solution 1). It works, but it can run once per row.
--- Pain 2: nested subqueries get hard to read, and the same average is
---         worked out again and again.
--- Fix 2 : a CTE (WITH) works out each department's average ONCE, gives it a
---         name, and joins it back (Solution 2). Or a window function,
---         AVG(salary) OVER (PARTITION BY department_id), writes the average
---         next to every row without squashing them (Solution 3).
+-- Chapter 1: WHERE can't see an average
+--   What people did  : WHERE salary > AVG(salary)
+--   Problem they hit : an error. WHERE checks one row at a time, but an
+--                      average needs a whole department of rows.
+--   What SQL said    : "Use a correlated subquery. It works out the
+--                      department's average for each row." (Solution 1)
+--   How it solved it : it works. But... it can run once per row.
+--
+-- Chapter 2: the same average, again and again
+--   What people did  : subqueries nested inside subqueries
+--   Problem they hit : hard to read, and the same average is worked out again
+--                      and again.
+--   What SQL said    : "A CTE (WITH) works out each department's average ONCE,
+--                      gives it a name, and you join it back." (Solution 2)
+--                      Or a window function, AVG(salary) OVER (PARTITION BY
+--                      department_id), writes the average next to every row
+--                      without squashing them. (Solution 3)
+--   How it solved it : each average is worked out once, and the query reads
+--                      from top to bottom.
 
 
 -- ============================================================================

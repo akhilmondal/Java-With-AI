@@ -10,16 +10,47 @@
 
 ## 🧬 Why does this exist? The story
 
-Why does every Java object have **two** methods, `equals()` and `hashCode()`? Because each one fixes a different pain:
+Why does every Java object have **two** methods, `equals()` and `hashCode()`? Because programmers hit two different problems, one after the other.
 
-1. **❌ The pain:** `==` only asks "is it the same object in memory?". You load employee 101 from the database twice and get two objects. `==` says they're different, even though it's the same person.
-2. **✅ The fix (Java 1.0): `equals()`.** Every class can decide what "the same" means. For an Employee: the same ID.
-3. **❌ New pain:** a map with 1 lakh entries can't call `equals()` on every entry to find your key. That's as slow as searching a list.
-4. **✅ The fix (also Java 1.0): `hashCode()`.** A number that picks **one bucket** first (J01). Then `equals()` only checks the few entries inside that bucket.
-5. **❌ New pain:** now the map uses **both** methods, so they must agree. If two equal employees get different hashCodes, the map opens the wrong bucket, and a HashSet keeps both copies.
-6. **✅ The fix: the contract.** Equal objects must have equal hashCodes. So you always override both, on the same fields.
-7. **❌ New pain:** writing both by hand for every class is boring and easy to get wrong. You forget a field, or use different fields in each one.
-8. **✅ The fix: let Java write them.** `Objects.equals` and `Objects.hash` (Java 7, 2011), IDE generation, Lombok, and **records** (Java 16, 2021), which write both for you.
+### Chapter 1 · Two copies of the same employee looked like strangers
+
+**🧑‍💻 What people were doing:** they loaded employee 101 from the database twice, and compared the two objects with `==`.
+
+**😣 The problem they hit:** `==` only asks "is it the **same object in memory**?". Two loads make two objects, so `==` said **false**, even though it's the same person.
+
+**☕ What the Java team said:** "Every class can decide for itself what 'the same' means." → **`equals()` (Java 1.0)**. For an Employee: the same ID.
+
+**✅ How it solved the problem:** `e1.equals(e2)` is now **true**. **But…** a map can't call `equals()` on all its entries to find your key.
+
+### Chapter 2 · Calling equals() on everything was slow
+
+**🧑‍💻 What people were doing:** putting employees into a big map, then looking one up.
+
+**😣 The problem they hit:** to find your key, the map would compare it with every entry: up to **1 lakh `equals()` calls**. That's as slow as searching a list.
+
+**☕ What the Java team said:** "Every object will also give a number, `hashCode()`. The map uses it to pick **one bucket** first (J01). Then it calls `equals()` only on the few keys inside." → **`hashCode()` (also Java 1.0)**
+
+**✅ How it solved the problem:** one bucket, and only a few `equals()` calls. **But…** now the map uses **both** methods, so they must agree.
+
+### Chapter 3 · The two methods disagreed
+
+**🧑‍💻 What people were doing:** overriding `equals()`, and forgetting `hashCode()`.
+
+**😣 The problem they hit:** two equal employees got **different** hashCodes. The map opened the wrong bucket, and a HashSet kept **both** copies.
+
+**☕ What the Java team said:** "Here's a rule (the **contract**): if two objects are equal, their hashCodes **must** be equal." → **the equals/hashCode contract**
+
+**✅ How it solved the problem:** override both, on the same fields, and the map always opens the right bucket. **But…** writing both by hand for every class is boring.
+
+### Chapter 4 · Writing both by hand went wrong
+
+**🧑‍💻 What people were doing:** typing `equals()` and `hashCode()` by hand in every class.
+
+**😣 The problem they hit:** people forgot a field, or used different fields in each method. The contract broke without any error.
+
+**☕ What the Java team said:** "Let us write them for you." → **`Objects.equals` and `Objects.hash` (Java 7, 2011)**, IDE generation, Lombok, and **records (Java 16, 2021)**
+
+**✅ How it solved the problem:** a one-line record gets both methods, always on the same fields.
 
 ```mermaid
 flowchart TD
