@@ -10,16 +10,47 @@
 
 ## 🧬 Why does this exist? The story
 
-Every collector below exists because the loop version was long and easy to get wrong.
+Every collector below exists because the loop version was long and easy to get wrong. Here's how each one arrived.
 
-1. **❌ The pain (before Java 8):** "count payments per status" took a loop with a map, a `get`, a null check and a `put`.
-2. **✅ The fix (Java 8, 2014): streams and `groupingBy`.** One line puts every payment into its bin.
-3. **❌ New pain:** a map of **lists** is rarely the answer. You want the count, the total or the biggest per bin.
-4. **✅ The fix (Java 8): downstream collectors.** The 2nd argument of groupingBy: `counting()`, `summingInt()`, `maxBy()`, `mapping()`.
-5. **❌ New pain:** `maxBy` leaves an `Optional[...]` in every bin, which is ugly in the result.
-6. **✅ The fix: `collectingAndThen(maxBy(...), Optional::get)`** unwraps it in the same step.
-7. **❌ New pain:** `toMap` crashes when a key repeats, like a gateway callback that arrives twice.
-8. **✅ The fix: a merge function,** toMap's 3rd argument, which says which value to keep.
+### Chapter 1 · Counting with a loop
+
+**🧑‍💻 What people were doing:** to "count payments per status", they wrote a loop with a map, a `get`, a null check and a `put` (the "before" code below).
+
+**😣 The problem they hit:** 5 lines of fiddly code for one simple question. Forget the null check, and you get a NullPointerException.
+
+**☕ What the Java team said:** "Just tell us **how to pick the bin** for each payment, and we'll put every payment into its bin." → **streams and `groupingBy` (Java 8, 2014)**
+
+**✅ How it solved the problem:** one line instead of a loop. **But…** `groupingBy` alone gives a map of **lists**: SUCCESS → [TXN1, TXN4, TXN5].
+
+### Chapter 2 · A map of lists isn't the answer
+
+**🧑‍💻 What people were doing:** `groupingBy(Payment::status)`, then looping over each list again.
+
+**😣 The problem they hit:** they didn't want the lists. They wanted the **count**, the **total** or the **biggest** in each bin.
+
+**☕ What the Java team said:** "Pass a **2nd argument** that says what to do with each bin." → **downstream collectors (Java 8)**: `counting()`, `summingInt()`, `maxBy()`, `mapping()`
+
+**✅ How it solved the problem:** the answer comes out directly: SUCCESS=3. **But…** `maxBy` puts an `Optional[...]` in every bin.
+
+### Chapter 3 · Optional[...] in every bin
+
+**🧑‍💻 What people were doing:** `groupingBy(status, maxBy(comparing amount))` to get the biggest payment per status.
+
+**😣 The problem they hit:** the result looked like `{SUCCESS=Optional[TXN4 ...]}`. It's ugly, and a bin is never empty anyway.
+
+**☕ What the Java team said:** "Add a **finishing step** to any collector." → **`collectingAndThen(maxBy(...), Optional::get)`**
+
+**✅ How it solved the problem:** it unwraps the Optional in the same step.
+
+### Chapter 4 · toMap crashed on a repeated key
+
+**🧑‍💻 What people were doing:** building a map of txnId → payment with `toMap`, from gateway callbacks.
+
+**😣 The problem they hit:** a callback arrived **twice**, the key repeated, and `toMap` crashed with `IllegalStateException: Duplicate key`.
+
+**☕ What the Java team said:** "Give a **3rd argument**, a merge function, that tells us which value to keep." → **`(first, second) -> first`**
+
+**✅ How it solved the problem:** repeated keys are handled, and nothing crashes.
 
 **The same count, before and after Java 8:**
 

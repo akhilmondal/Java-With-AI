@@ -10,16 +10,47 @@
 
 ## 🧬 Why does this exist? The story
 
-Why does Java have a garbage collector, generations, Metaspace and several GC types? Each one fixed a pain:
+Why does Java have a garbage collector, generations, Metaspace and several GC types? Each one fixed a problem programmers hit.
 
-1. **❌ The pain (before Java):** in C and C++, you free memory yourself (`free`, `delete`). Forget it, and memory leaks until the app crashes. Free it too early, and other code reads garbage and crashes.
-2. **✅ The fix (Java 1.0, 1996): the garbage collector.** Java frees objects that nobody can reach any more. You just stop using them.
-3. **❌ New pain:** checking the whole heap takes time, and the app **pauses** while the GC works ("stop the world").
-4. **✅ The fix (the HotSpot JVM, around 2000): generations.** Most objects die young, like request objects and DTOs. So the GC cleans the small **young** area often, which is fast, and the **old** area rarely.
-5. **❌ New pain:** that design also had a fixed-size "permanent generation" (**PermGen**) for class data. Apps that loaded many classes crashed with `OutOfMemoryError: PermGen space`.
-6. **✅ The fix (Java 8, 2014): Metaspace.** Class data moved to native memory, which grows as needed.
-7. **❌ New pain:** heaps grew to many GB, and one full GC could pause the app for **seconds**. For a payment API, that means timeouts.
-8. **✅ The fix (Java 9, 2017): G1 became the default.** It splits the heap into regions and cleans the most-garbage regions first, aiming for short pauses. For huge heaps, **ZGC** (production-ready in Java 15, 2020) keeps pauses around a millisecond.
+### Chapter 1 · Freeing memory by hand
+
+**🧑‍💻 What people were doing:** in C and C++, you freed memory yourself, with `free` or `delete`.
+
+**😣 The problem they hit:** forget to free it, and memory leaks until the app crashes. Free it too early, and other code reads garbage and crashes.
+
+**☕ What the Java team said:** "Just stop using an object. **We'll find** the objects nobody can reach any more, and free them." → **the garbage collector (Java 1.0, 1996)**
+
+**✅ How it solved the problem:** no more manual freeing. **But…** checking the whole **heap** (the memory where objects live) takes time, and the app **pauses** while the GC works ("stop the world").
+
+### Chapter 2 · The app paused while the GC worked
+
+**🧑‍💻 What people were doing:** running apps that create millions of small objects.
+
+**😣 The problem they hit:** each time the GC checked the whole heap, the app froze.
+
+**☕ What the Java team said:** "Most objects **die young**, like request objects and DTOs. So we'll clean a small **young** area often, which is fast, and the **old** area rarely." → **generations (the HotSpot JVM, around 2000)**
+
+**✅ How it solved the problem:** short, frequent cleanups instead of big ones. **But…** class data lived in a fixed-size area called **PermGen** (the permanent generation).
+
+### Chapter 3 · PermGen ran out of space
+
+**🧑‍💻 What people were doing:** running apps and frameworks that load many classes.
+
+**😣 The problem they hit:** the fixed area filled up, and apps crashed with `OutOfMemoryError: PermGen space`.
+
+**☕ What the Java team said:** "We'll move class data to **native memory** (memory outside the heap), which grows as needed." → **Metaspace (Java 8, 2014)**
+
+**✅ How it solved the problem:** no more PermGen crashes. **But…** heaps grew to many GB.
+
+### Chapter 4 · Pauses of whole seconds
+
+**🧑‍💻 What people were doing:** running payment APIs with heaps of many GB.
+
+**😣 The problem they hit:** one full GC could pause the app for **seconds**. For a payment API, that means timeouts.
+
+**☕ What the Java team said:** "We'll split the heap into small **regions**, and clean the most-garbage regions first, aiming for short pauses." → **G1 became the default (Java 9, 2017)**. For huge heaps, **ZGC** (production-ready in Java 15, 2020) keeps pauses around a millisecond.
+
+**✅ How it solved the problem:** pauses stay short, even on big heaps.
 
 ```mermaid
 flowchart TD

@@ -1,6 +1,6 @@
 ---
 name: teach-interview-topic
-description: Teaches, rewrites and quizzes the topics of this project's Full-Stack Interview Sprint (Java core, streams, SQL, DSA, Spring Boot, microservices, Angular, project stories, HR answers). Acts as a senior mentor preparing the user for MNC and product-company interviews. Every concept is taught story-first - the problem it solved, the new problem that caused, and the next fix - in simple English. Each lesson has one small example with real numbers, Mermaid diagrams next to the words, a runnable demo that proves each rule, an interview answer given as points plus an example, and a Quick Revision section for the last two hours before an interview. Use it whenever the user says "next" or "next topic", names a topic ID from README.md (J02, S00, Q01, D02, B05, M03, P01, A04, H01...), or asks you to explain, teach, simplify or refactor a lesson. Also use it when they send "grade:", "quiz me", "again:" or "start mock", or say they didn't understand part of a lesson, including Hinglish like "samjha nahi", "achhe se explain karo", "thoda aur simple" or "q chahiye ye", even if they don't mention a skill.
+description: Teaches, rewrites and quizzes the topics of this project's Full-Stack Interview Sprint (Java core, streams, SQL, DSA, Spring Boot, microservices, Angular, project stories, HR answers). Acts as a senior mentor preparing the user for MNC and product-company interviews. Every concept is taught story-first, as chapters a first-year student can follow - what people were doing, the problem they hit, what the Java team said, and how that solved it - in simple English. Each lesson has one small example with real numbers, Mermaid diagrams next to the words, a runnable demo that proves each rule, an interview answer given as points plus an example, and a Quick Revision section for the last two hours before an interview. Use it whenever the user says "next" or "next topic", names a topic ID from README.md (J02, S00, Q01, D02, B05, M03, P01, A04, H01...), or asks you to explain, teach, simplify or refactor a lesson. Also use it when they send "grade:", "quiz me", "again:" or "start mock", or say they didn't understand part of a lesson, including Hinglish like "samjha nahi", "achhe se explain karo", "thoda aur simple" or "q chahiye ye", even if they don't mention a skill.
 ---
 
 # Teach an interview topic
@@ -21,6 +21,7 @@ You are the user's senior mentor: an experienced engineer who has interviewed ca
 - **Bare rules don't land.** J01 Step 6 only made sense once each rule had numbers, an analogy and a demo.
 - **2026-09-27:** they asked for "more simple and understandable examples with diagrams and codes", to understand a topic just by reading the doc, and a revision section at the end "if my interview is in 2 hours".
 - **2026-09-29:** they asked to be taught **why each concept exists**: "why was StringBuilder needed, what problem did it solve, then why StringBuffer". Otherwise features feel random, and they won't remember them.
+- **2026-10-05:** a numbered list of "❌ pain / ✅ fix" lines was **still not understandable**. They want it told like a story to a **first-year B.Tech student**: "people were doing X, they hit problem Y, so the Java team said 'we'll do Z, so that Y can't happen'". Every story is now written as **chapters** in that shape (see "The story chapter format").
 
 ## What learning research says, and how every lesson applies it
 
@@ -37,7 +38,7 @@ Sources: Kapur, "Productive failure", *Cognition and Instruction*, 2008. Weinste
 
 ## The core technique
 
-1. **Story first: why does this exist?** Before any mechanics, tell the concept's story as a chain of **❌ pain → ✅ fix → ❌ new pain → ✅ next fix**.
+1. **Story first: why does this exist?** Before any mechanics, tell the concept's story as a chain of **❌ pain → ✅ fix → ❌ new pain → ✅ next fix**, written as **chapters** (see "The story chapter format" below), never as a bare list of pain/fix lines.
    - Use small numbers ("5 joins copy 105 characters"), and the version and year where they're known.
    - The reader should finish the story thinking "of course they added this". J03's chain:
      1. Shared text must never change, so String is immutable and literals are pooled (Java 1.0).
@@ -50,11 +51,27 @@ Sources: Kapur, "Productive failure", *Cognition and Instruction*, 2008. Weinste
 5. **Prove it with the real class** in the demo wherever the behaviour is visible. When internals can't be seen, compute them with the same formula and say so.
 6. **The interview answer is ordered points plus the example**, and it starts with the problem the feature solves. Add a short sample of how it could sound, never a speech to memorize.
 
+## The story chapter format
+
+Write the story for a **first-year B.Tech student**: they know a little Java syntax, and nothing about why the language grew this way. The reader should feel they were there when it happened.
+
+- **3 to 5 chapters.** Each chapter is one pain and its fix, with a short title that names the problem ("Searching 1 lakh employees was slow").
+- **Every chapter has the same four lines, in this order:**
+  1. **🧑‍💻 What people were doing:** the normal code people wrote back then, in one or two sentences. A tiny snippet is fine.
+  2. **😣 The problem they hit:** what went wrong, with a small number ("5 joins copy 105 characters"). Describe it as something that happened to a programmer, not as an abstract property.
+  3. **☕ What the Java team said:** a quote in plain words, in the shape "We'll give you X, so that Y never happens again." Then the feature name with version and year in bold. For SQL say "What SQL said", for Spring "What the Spring team said", for DSA "What a smarter programmer said".
+  4. **✅ How it solved the problem:** what is different now, with the same numbers ("1 check instead of 1 lakh"). If the fix created a new problem, end with "**But…**" and one sentence, which leads into the next chapter.
+- **Explain every technical word the first time**, in brackets: "a lock (only one thread can enter at a time)", "a bucket (one drawer of the map)". Never assume the reader knows "thread-safe", "overhead", "boilerplate" or "contention".
+- **Keep each line short:** 1 to 3 sentences, 20 words or fewer each. Plain verbs: "waited", "copied", "lost", "crashed".
+- **Open with one hook line** that says what the story explains, and **close** with the Mermaid chain diagram, its 👀 Notice, and "🧠 So it's not random".
+- **In `.java` and `.sql` files** use the same four labels in comments, one chapter per block (see `references/lesson-template.md`).
+- **The Quick Revision keeps the one-line arrow version** of the story, because by then the reader already knows the chapters.
+
 ## The lesson format (`.md`)
 
 Follow `references/lesson-template.md` exactly. The sections, in order:
 0. **Title, "In one line" and a meta table:** read time, run command, where it's asked.
-1. **🧬 Why does this exist? The story.** The ❌ pain → ✅ fix chain in 4 to 8 short numbered steps, then a Mermaid chain diagram, then "🧠 So it's not random" (one line).
+1. **🧬 Why does this exist? The story.** 3 to 5 chapters in the story chapter format (what people were doing → the problem they hit → what the Java team said → how it solved it), then a Mermaid chain diagram, then "🧠 So it's not random" (one line).
 2. **🧩 Words you need:** 3 to 6 terms with one-line meanings.
 3. **🖼️ Picture it:** an analogy, a Mermaid diagram of the mechanism, and a mapping table.
 4. **🔬 How it works, step by step.** Each step has:
@@ -132,8 +149,8 @@ Follow `references/lesson-template.md` exactly. The sections, in order:
 |---|---|
 | J (Java core), S00 | `<ID>_<PascalName>.md` to read, plus `<ID>_<PascalName>.java` to run |
 | S01, S02 (stream practice) | S01 has stubs, a checker (`[DONE]` plus a score) and hints. S02 has the solutions, the same checker (must print 8/8) and a QUICK REVISION block |
-| Q (SQL) | `Q<NN>_<snake_name>.sql` in PostgreSQL, laid out in this order: 1. the problem and its data. 2. A blank "try it yourself" gap. 3. A **WHY THIS TOOL EXISTS** block (pain → fix). It goes after the gap so it doesn't spoil the attempt. 4. The solutions. 5. A QUICK REVISION block with a Story line. `Q00_setup.sql` holds the data, and `Q00_sql_toolkit.md` is the concept lesson |
-| D (DSA) | One `.java` with: the problem, `mySolution()` with a checker, and the brute force. Then a **WHY THE BETTER WAY EXISTS** block: what the brute force wastes, and the clue that removes the waste. Then the better approach, hand traces, time and space, a printed trace, the classic bug, and a QUICK REVISION block with a Story line |
+| Q (SQL) | `Q<NN>_<snake_name>.sql` in PostgreSQL, laid out in this order: 1. the problem and its data. 2. A blank "try it yourself" gap. 3. A **WHY THIS TOOL EXISTS** block, written as story chapters (what people did → problem they hit → what SQL said → how it solved it). It goes after the gap so it doesn't spoil the attempt. 4. The solutions. 5. A QUICK REVISION block with a Story line. `Q00_setup.sql` holds the data, and `Q00_sql_toolkit.md` is the concept lesson |
+| D (DSA) | One `.java` with: the problem, `mySolution()` with a checker, and the brute force. Then a **WHY THE BETTER WAY EXISTS** block, written as story chapters: what you did first (brute force) → the problem you hit (what it wastes, with numbers) → what a smarter programmer said (the clue) → how it solved it. Then the better approach, hand traces, time and space, a printed trace, the classic bug, and a QUICK REVISION block with a Story line |
 | B, M (Spring Boot, microservices) | `.md` in the lesson format with the story first: why Spring, why Boot, why microservices, why RabbitMQ… Use java, properties and yaml code blocks, tied to the payment system. Spring isn't installed, so when behaviour must be seen to be believed, add a plain-Java demo that copies what Spring does. B13 is the example: it uses real thread names and says clearly that it's a simulation. Name the pair `B<NN>_<PascalName>.md` and `.java` |
 | P (project stories) | `.md`. Ask for the real details first, and never invent them. Use situation, action, result |
 | A (Angular) | `.md` in the lesson format with the story first: why RxJS, why OnPush, why signals… Use typescript and html code blocks |

@@ -9,10 +9,13 @@
    Read Q00_sql_toolkit.md first: it explains the ideas the problems use.
 
    WHY THE DATA IS SPLIT INTO TABLES (the story)
-     If every employee row stored the department NAME, renaming PAYMENTS
-     would mean updating every PAYMENTS row, and one typo would create a fake
-     department. So each fact is stored once: employees.department_id points
-     to departments.id. That split is the reason JOINs exist.
+     What people did : stored the department NAME in every employee row.
+     Problem they hit: renaming PAYMENTS meant updating every PAYMENTS row,
+                       and one typo created a fake department.
+     What SQL said   : "Store each fact once. employees.department_id points
+                       to departments.id."
+     How it solved it: a rename changes one row. That split is the reason
+                       JOINs exist.
    ============================================================================ */
 
 DROP TABLE IF EXISTS employees;

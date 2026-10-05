@@ -14,14 +14,47 @@
 
 ## 🧬 Why does this exist? The story
 
-1. **❌ The pain:** a server that handles one request at a time. If each request takes 300 ms, the 200th user waits about **1 minute**.
-2. **✅ The fix: a thread per request.** Tomcat keeps a pool of request threads, **200 by default**, and Spring Boot has shipped with Tomcat built in since its first version (1.0, 2014). 3 requests take about 300 ms, not 900.
-3. **❌ New pain:** Spring creates **one** object per bean (a singleton), and all 200 threads share it. A field that holds request data gets overwritten by another user's request. In the demo, **Rahul's receipt shows Priya's name**.
-4. **✅ The fix: stateless beans.** Request data stays in parameters and local variables, which live on each thread's own stack. Shared state goes into thread-safe types or the database.
-5. **❌ New pain:** some work is slow, but the user shouldn't wait for it, like the SMS after a payment. On the request thread, the user waits **453 ms instead of 54**.
-6. **✅ The fix (Spring 3.0, 2009): `@Async`.** Spring hands the method call to a thread pool and returns at once.
-7. **❌ New pain:** the default pools aren't safe for production. Context like the log's trace ID doesn't follow the job to the new thread. And production runs 2 or more copies of the app, where `synchronized` protects only one.
-8. **✅ The fix:** your own `ThreadPoolTaskExecutor` (a limited queue, named threads), a `TaskDecorator` to copy the context, and locks in the database: a version check or `SELECT ... FOR UPDATE`. On Java 21, Spring Boot 3.2 (2023) can also run requests on cheap virtual threads.
+Every Spring threading rule exists because a real server hit a real problem. Here's the story.
+
+### Chapter 1 · One request at a time
+
+**🧑‍💻 What people were doing:** running a server that handles one request at a time.
+
+**😣 The problem they hit:** if each request takes 300 ms, the 200th user waits about **1 minute**.
+
+**☕ What the server builders said:** "Keep a **pool of request threads**, and give each request its own thread." → **Tomcat, 200 threads by default**. Spring Boot has shipped with Tomcat built in since its first version (1.0, 2014).
+
+**✅ How it solved the problem:** 3 requests take about 300 ms, not 900. **But…** all those threads share the same objects.
+
+### Chapter 2 · 200 threads, one shared bean
+
+**🧑‍💻 What people were doing:** saving request data in a field of a Spring bean (an object Spring creates for you).
+
+**😣 The problem they hit:** Spring creates **one** object per bean (a **singleton**), and all 200 threads share it. Another user's request overwrote the field. In the demo, **Rahul's receipt shows Priya's name**.
+
+**☕ What the Spring team said:** "Keep beans **stateless**. Put request data in parameters and local variables, which live on each thread's own stack." → **stateless beans**. Shared state goes into thread-safe types or the database.
+
+**✅ How it solved the problem:** each request's data stays private to its thread. **But…** some work is slow, and the user waits for it.
+
+### Chapter 3 · The user waited for the SMS
+
+**🧑‍💻 What people were doing:** sending the SMS after a payment, on the request thread.
+
+**😣 The problem they hit:** the user waited **453 ms instead of 54**, just for a message they don't need to wait for.
+
+**☕ What the Spring team said:** "Put `@Async` on the method, and we'll hand the call to a thread pool and return at once." → **`@Async` (Spring 3.0, 2009)**
+
+**✅ How it solved the problem:** the user waits 54 ms. **But…** the default setup isn't safe for production.
+
+### Chapter 4 · Production problems
+
+**🧑‍💻 What people were doing:** using the default pools, and `synchronized` for shared data.
+
+**😣 The problem they hit:** the default pools aren't safe for production. Context like the log's trace ID doesn't follow the job to the new thread. And production runs 2 or more copies of the app, where `synchronized` protects only one.
+
+**☕ What the Spring team said:** "Configure **your own** `ThreadPoolTaskExecutor` (a limited queue, named threads), copy the context with a `TaskDecorator`, and lock in the **database**: a version check or `SELECT ... FOR UPDATE`." On Java 21, **Spring Boot 3.2 (2023)** can also run requests on cheap virtual threads.
+
+**✅ How it solved the problem:** safe pools, traceable logs, and correct data even across many servers.
 
 ```mermaid
 flowchart TD

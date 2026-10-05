@@ -10,16 +10,47 @@
 
 ## 🧬 Why does this exist? The story
 
-Why does Java have exceptions, checked exceptions, `finally` **and** try-with-resources? Each one fixed a pain:
+Why does Java have exceptions, checked exceptions, `finally` **and** try-with-resources? Each one fixed a problem programmers kept hitting.
 
-1. **❌ The pain (before Java):** in C, a function reported failure by returning a code, like -1. Callers often forgot to check it, so the program carried on with bad data, silently.
-2. **✅ The fix (Java 1.0, 1996): exceptions.** An error jumps out of the method, and it can't be silently ignored. Someone catches it, or the program stops with a stack trace that shows exactly where it happened.
-3. **❌ New pain:** some failures are **expected**, like a missing file or a network drop. Callers forgot to plan for them.
-4. **✅ The fix (Java 1.0): checked exceptions.** For those, the compiler refuses to compile until you catch them or declare them with `throws`.
-5. **❌ New pain:** when an exception jumps out, the cleanup line (`close()`) is skipped, so files and DB connections leak.
-6. **✅ The fix (Java 1.0): `finally`.** A block that always runs, error or not.
-7. **❌ New pain:** real cleanup in finally got long and ugly: null checks, a nested try because `close()` can throw too, and an error in finally could **hide** the real one.
-8. **✅ The fix (Java 7, 2011): try-with-resources.** Put the resource in `try (...)`, and Java closes it for you, in reverse order. If `close()` also fails, that error is kept as "suppressed" instead of hiding the real one.
+### Chapter 1 · Errors that were silently ignored
+
+**🧑‍💻 What people were doing:** in C, a function reported failure by returning a code, like -1.
+
+**😣 The problem they hit:** callers often forgot to check the code. The program carried on with bad data, and nobody noticed.
+
+**☕ What the Java team said:** "An error will **jump out** of the method. Someone must catch it, or the program stops and shows exactly where it happened (a **stack trace**)." → **exceptions (Java 1.0, 1996)**
+
+**✅ How it solved the problem:** an error can't be silently ignored any more. **But…** some failures are **expected**, and callers still forgot to plan for them.
+
+### Chapter 2 · Forgetting to plan for expected failures
+
+**🧑‍💻 What people were doing:** reading a file or calling the network, without thinking "what if the file is missing?".
+
+**😣 The problem they hit:** these failures happen often in real life, and the app crashed on them.
+
+**☕ What the Java team said:** "For these failures, the **compiler won't compile** your code until you catch them or declare them with `throws`." → **checked exceptions (Java 1.0)**
+
+**✅ How it solved the problem:** you're forced to plan for them. **But…** when an exception jumps out, the lines after it are skipped, including `close()`.
+
+### Chapter 3 · Cleanup got skipped
+
+**🧑‍💻 What people were doing:** open a file, read it, then `close()` it.
+
+**😣 The problem they hit:** an exception in the read jumped over `close()`. Files and DB connections **leaked** (stayed open), until the app ran out of them.
+
+**☕ What the Java team said:** "Put the cleanup in a `finally` block. It **always runs**, error or not." → **`finally` (Java 1.0)**
+
+**✅ How it solved the problem:** cleanup always happens. **But…** real finally blocks got long and ugly.
+
+### Chapter 4 · finally blocks got ugly
+
+**🧑‍💻 What people were doing:** writing finally blocks with null checks, and a nested try, because `close()` can throw too.
+
+**😣 The problem they hit:** the code was long, and an error in finally could **hide** the real error.
+
+**☕ What the Java team said:** "Put the resource in `try (...)`, and **we'll close it for you**, in reverse order. If `close()` also fails, we'll keep that error as 'suppressed' instead of hiding the real one." → **try-with-resources (Java 7, 2011)**
+
+**✅ How it solved the problem:** short code, nothing leaks, and the real error is never lost.
 
 ```mermaid
 flowchart TD

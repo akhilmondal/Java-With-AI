@@ -19,14 +19,45 @@
 
 SOLID isn't theory for exams. It came from real teams whose code kept breaking every time they changed it.
 
-1. **❌ The pain:** code that's easy to write but hard to change. One huge PaymentService does everything. A small SMS change breaks payments, and every new gateway means editing a giant if/else and retesting it all.
-2. **✅ The fix (Robert C. Martin, around 2000): five design principles**, later named **SOLID** (around 2004). Each letter stops one kind of breakage (the table below).
-3. **❌ New pain (interfaces):** before Java 8, adding one method to an interface broke **every** class that implemented it. Java 8 wanted to add `stream()` and `sort()` to `Collection` and `List`, which millions of classes implement.
-4. **✅ The fix (Java 8, 2014): default methods.** An interface method with a body, so old classes keep compiling. Since then interfaces and abstract classes look alike, and the real difference is **state** (fields).
-5. **❌ New pain (shared objects):** an object anyone can change. You validate a payment request, and some other code changes the amount afterwards. Bugs like this show up only sometimes.
-6. **✅ The fix: immutable classes**, the same idea as String (J03): final fields, no setters, defensive copies.
-7. **❌ New pain:** a small immutable class by hand is about 40 lines: constructor, getters, equals, hashCode and toString.
-8. **✅ The fix (Java 16, 2021): records.** One line does it. You still copy lists yourself.
+### Chapter 1 · Every change broke something
+
+**🧑‍💻 What people were doing:** one huge PaymentService did everything: payments, SMS, and every gateway in one giant if/else.
+
+**😣 The problem they hit:** a small SMS change broke payments. Every new gateway meant editing the giant if/else and retesting all of it.
+
+**☕ What experienced engineers said:** "Follow five rules, so each change touches **one small place**." → **five design principles (Robert C. Martin, around 2000)**, later named **SOLID** (around 2004)
+
+**✅ How it solved the problem:** each letter stops one kind of breakage (the table below the diagram).
+
+### Chapter 2 · Adding a method to an interface broke everyone
+
+**🧑‍💻 What people were doing:** the Java team wanted to add `stream()` and `sort()` to `Collection` and `List`.
+
+**😣 The problem they hit:** before Java 8, adding one method to an interface broke **every** class that implemented it. Millions of classes implement List.
+
+**☕ What the Java team said:** "An interface method can now have a **body**, so old classes keep compiling." → **default methods (Java 8, 2014)**
+
+**✅ How it solved the problem:** `List.sort` and `Collection.stream` arrived without breaking anyone. Since then, interfaces and abstract classes look alike, and the real difference is **state** (fields).
+
+### Chapter 3 · Objects changed behind your back
+
+**🧑‍💻 What people were doing:** passing one payment request object around to many methods.
+
+**😣 The problem they hit:** you validate the request, and some other code changes the amount afterwards. Bugs like this show up only sometimes.
+
+**☕ What good Java code said:** "Make the object **impossible to change**, just like String (J03): final fields, no setters, and **defensive copies** (copy lists in and out)." → **immutable classes**
+
+**✅ How it solved the problem:** once checked, the object stays correct. **But…** a small immutable class by hand is about **40 lines**.
+
+### Chapter 4 · 40 lines of boilerplate
+
+**🧑‍💻 What people were doing:** typing the constructor, getters, equals, hashCode and toString for every immutable class.
+
+**😣 The problem they hit:** 40 lines of repeated code for a class that holds 3 values.
+
+**☕ What the Java team said:** "Write **one line**, and we'll generate the rest." → **records (Java 16, 2021)**
+
+**✅ How it solved the problem:** one line instead of 40. You still copy lists yourself.
 
 ```mermaid
 flowchart TD

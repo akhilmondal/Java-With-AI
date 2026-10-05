@@ -10,16 +10,39 @@
 
 ## 🧬 Why does this exist? The story
 
-Java didn't make three text classes for fun. Each one fixed a real pain.
+Why does Java have three text classes: String, StringBuffer and StringBuilder? Here's what happened, in order.
 
 > 💡 **A common mix-up:** many people think StringBuilder came first. It's the other way round. **StringBuffer is the old one (Java 1.0), and StringBuilder came later (Java 5).** The order is the story.
 
-1. **❌ The pain (before Java):** in older languages like C, text was a plain array of characters. Any code that held it could change it. You check a file path is safe, and some other code changes it right after your check.
-2. **✅ The fix (Java 1.0, 1996): String can never change.** Once created, it stays the same forever. So Java can share it safely everywhere: one copy per literal in the String pool, as HashMap keys, and across threads.
-3. **❌ New pain:** building text step by step. Every `+=` makes a new String and copies all the old text again. 5 joins of "TXN0001" copy **105** characters to build a **35**-character result.
-4. **✅ The fix (also Java 1.0): StringBuffer.** It's one growing, changeable buffer. `append` just writes at the end, with no copying of the old text. To be safe, every method got a **lock** (`synchronized`), so only one thread can use it at a time.
-5. **❌ New pain:** almost all text is built inside one method, by one thread. There, taking a lock on every `append` is wasted work. Even the compiler used StringBuffer for every `+` in your code, so everyone paid for locks.
-6. **✅ The fix (Java 5, 2004): StringBuilder.** It has the same methods, with no locks. The compiler switched `+` to it too. The Java docs say a buffer is usually "used by a single thread (as is generally the case)". So **StringBuilder is the default today.**
+### Chapter 1 · Text that anyone could change
+
+**🧑‍💻 What people were doing:** in older languages like C, text was a plain array of characters. Any code that held it could change it.
+
+**😣 The problem they hit:** you check that a file path is safe, and some other code changes it right after your check.
+
+**☕ What the Java team said:** "Once a String is made, **nobody can change it**. Then we can share it safely everywhere." → **Immutable `String` (Java 1.0, 1996)**
+
+**✅ How it solved the problem:** Java keeps one copy per literal in the **String pool** (a shared box of texts). Strings are also safe as HashMap keys and across threads. **But…** building text step by step became slow.
+
+### Chapter 2 · Building text with += was slow
+
+**🧑‍💻 What people were doing:** building a message in a loop with `+=`.
+
+**😣 The problem they hit:** every `+=` makes a **brand-new** String and copies all the old text again. 5 joins of "TXN0001" copy **105** characters to build a **35**-character result.
+
+**☕ What the Java team said:** "We'll give you one **growing box**. `append` only writes at the end, and nothing old is copied. We'll also put a **lock** on every method, so two threads can't mix up the text." → **`StringBuffer` (also Java 1.0)**
+
+**✅ How it solved the problem:** no more copying the old text. **But…** every `append` now takes a lock.
+
+### Chapter 3 · Locks that nobody needed
+
+**🧑‍💻 What people were doing:** almost all text was built inside one method, by **one thread**. Even the compiler used StringBuffer for every `+` in your code.
+
+**😣 The problem they hit:** everyone paid for a lock on every `append`, for safety they didn't need. It was wasted work.
+
+**☕ What the Java team said:** "Same methods, **no locks**." The Java docs say a buffer is usually "used by a single thread (as is generally the case)". → **`StringBuilder` (Java 5, 2004)**. The compiler switched `+` to it too.
+
+**✅ How it solved the problem:** no copying and no wasted locks. That's why **StringBuilder is the default today.**
 
 ```mermaid
 flowchart TD

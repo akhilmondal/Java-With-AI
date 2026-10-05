@@ -57,16 +57,22 @@
 -- ============================================================================
 -- WHY THESE TOOLS EXIST (the story, read it after your own try)
 -- ============================================================================
--- Pain 1: you want one answer per department, not one per employee.
--- Fix 1 : GROUP BY department makes one pile per department, and MAX(salary)
---         gives each pile's top amount.
--- Pain 2: GROUP BY squashes each pile into one row, so the NAME is lost.
---         SELECT name ... GROUP BY department_id is an error: a pile has
---         three names, and SQL can't guess which one you mean.
--- Fix 2 : match the salary back with a subquery (Solution 3), or use a
---         window function, which keeps every row. Rank people INSIDE each
---         department (PARTITION BY) and keep rank 1 (Solution 2). Ties keep
---         both people.
+-- Chapter 1: one answer per department
+--   What people did  : SELECT MAX(salary) FROM employees
+--   Problem they hit : that's one answer for the whole company. They wanted
+--                      one answer per department.
+--   What SQL said    : "GROUP BY department makes one pile per department, and
+--                      MAX(salary) gives each pile's top amount."
+--   How it solved it : one top salary per department. But... whose is it?
+--
+-- Chapter 2: GROUP BY lost the names
+--   What people did  : SELECT name, MAX(salary) ... GROUP BY department_id
+--   Problem they hit : an error. A pile has three names, and SQL can't guess
+--                      which one you mean.
+--   What SQL said    : "Match the salary back with a subquery (Solution 3), or
+--                      use a window function, which keeps every row."
+--   How it solved it : rank people INSIDE each department (PARTITION BY) and
+--                      keep rank 1 (Solution 2). Ties keep both people.
 
 
 -- ============================================================================

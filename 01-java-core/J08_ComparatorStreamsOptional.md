@@ -12,14 +12,45 @@
 
 These four tools look unrelated, but they're one story: making everyday code **shorter and safer**.
 
-1. **❌ The pain:** Java can't sort a list of Employee objects by itself. It doesn't know who comes first.
-2. **✅ The fix (Java 1.2, 1998): `Comparable`.** The class states its own order in `compareTo`, for example by id.
-3. **❌ New pain:** a class gets only **one** natural order. HR wants employees by salary, and finance wants them by name.
-4. **✅ The fix (also Java 1.2): `Comparator`.** Any order, written outside the class. But each one needed a long anonymous class.
-5. **❌ New pain:** that boilerplate hid the one line that mattered. Loops for "filter, then transform, then collect" did the same.
-6. **✅ The fix (Java 8, 2014): lambdas, `Comparator.comparing()` and streams.** One readable line that says **what** you want, not **how** to loop.
-7. **❌ New pain:** methods returned `null` for "not found". Callers forgot to check and got a NullPointerException. Tony Hoare, who invented null references in 1965, later called them his "billion-dollar mistake".
-8. **✅ The fix (Java 8, 2014): `Optional`.** The return type itself says "this may be empty", so the caller has to decide: `orElse`, `orElseGet` or `orElseThrow`.
+### Chapter 1 · Java couldn't sort employees
+
+**🧑‍💻 What people were doing:** calling `Collections.sort(employees)` on their own Employee class.
+
+**😣 The problem they hit:** Java doesn't know who comes first. Employee is your class, not Java's.
+
+**☕ What the Java team said:** "Your class can state its own order, in `compareTo`." → **`Comparable` (Java 1.2, 1998)**, for example by id
+
+**✅ How it solved the problem:** the list sorts. **But…** a class gets only **one** natural order.
+
+### Chapter 2 · One order wasn't enough
+
+**🧑‍💻 What people were doing:** HR wanted employees by salary, and finance wanted them by name.
+
+**😣 The problem they hit:** `compareTo` can hold only one order, and you can't change it for each team.
+
+**☕ What the Java team said:** "Write **any order**, outside the class." → **`Comparator` (also Java 1.2)**
+
+**✅ How it solved the problem:** as many orders as you like. **But…** each one needed a 6-line **anonymous class** (a class with no name, written inline).
+
+### Chapter 3 · Six lines to say one thing
+
+**🧑‍💻 What people were doing:** writing anonymous Comparator classes, and loops for "filter, then transform, then collect".
+
+**😣 The problem they hit:** the **boilerplate** (setup code you type again and again) hid the one line that mattered.
+
+**☕ What the Java team said:** "Pass just the logic, as a **lambda** (a small function you can pass around), and describe data work as a pipeline." → **lambdas, `Comparator.comparing()` and streams (Java 8, 2014)**
+
+**✅ How it solved the problem:** one readable line that says **what** you want, not **how** to loop (see the before-and-after below).
+
+### Chapter 4 · null for "not found"
+
+**🧑‍💻 What people were doing:** returning `null` from a method when nothing was found.
+
+**😣 The problem they hit:** callers forgot to check, and got a NullPointerException. Tony Hoare, who invented null references in 1965, later called them his "billion-dollar mistake".
+
+**☕ What the Java team said:** "The **return type itself** will say 'this may be empty', so the caller has to decide what to do." → **`Optional` (Java 8, 2014)**: `orElse`, `orElseGet` or `orElseThrow`
+
+**✅ How it solved the problem:** you can't forget the empty case, because the type reminds you.
 
 **The same sort, before and after Java 8:**
 

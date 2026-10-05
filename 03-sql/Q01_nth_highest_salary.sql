@@ -63,17 +63,29 @@
 -- ============================================================================
 -- WHY THIS TOOL EXISTS (the story, read it after your own try)
 -- ============================================================================
--- Pain 1: MAX(salary) gives only the TOP salary. There is no "MAX number 2".
--- Fix 1 : sort the salaries from the top and skip one: LIMIT 1 OFFSET 1.
--- Pain 2: a tie at the top. Meera and Sneha both earn 90000, so "skip one"
---         lands on the second 90000, not on 80000.
--- Fix 2 : remove repeats first with DISTINCT, or give equal salaries the
---         same rank number.
--- Pain 3: before window functions, ranking meant a subquery that counts the
---         bigger salaries for every row (Solution 3). It's slow and hard to read.
--- Fix 3 : window functions (the SQL:2003 standard, PostgreSQL 8.4 in 2009).
---         DENSE_RANK gives ties the same number with no gaps, so rank 2 is
---         always the real 2nd highest: 80000.
+-- Chapter 1: MAX gives only the top salary
+--   What people did  : SELECT MAX(salary) FROM employees
+--   Problem they hit : it gives only the TOP salary. There is no "MAX number 2".
+--   What SQL said    : "Sort the salaries from the top and skip one."
+--                      That's LIMIT 1 OFFSET 1.
+--   How it solved it : you can reach any position. But... a tie breaks it.
+--
+-- Chapter 2: a tie at the top
+--   What people did  : ORDER BY salary DESC LIMIT 1 OFFSET 1
+--   Problem they hit : Meera and Sneha both earn 90000, so "skip one" lands on
+--                      the second 90000, not on 80000.
+--   What SQL said    : "Remove repeats first with DISTINCT, or give equal
+--                      salaries the same rank number."
+--   How it solved it : 80000 comes back. But... ranking was still painful.
+--
+-- Chapter 3: ranking by hand was slow
+--   What people did  : a subquery that counts the bigger salaries for every
+--                      row (Solution 3)
+--   Problem they hit : it's slow, and hard to read.
+--   What SQL said    : "We'll rank the rows for you." That's window functions
+--                      (the SQL:2003 standard, PostgreSQL 8.4 in 2009).
+--   How it solved it : DENSE_RANK gives ties the same number with no gaps, so
+--                      rank 2 is always the real 2nd highest: 80000.
 
 
 -- ============================================================================
