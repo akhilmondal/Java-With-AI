@@ -1,0 +1,6 @@
+# IntelliJ IDEA project settings (personal, per machine)
+.idea/
+*.iml
+
+# Compiled classes from the IDE
+out/
