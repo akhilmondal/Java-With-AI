@@ -40,6 +40,7 @@ function fromCode(text) {
 const entries = [];
 for (const folder of sectionFolders) {
   for (const name of fs.readdirSync(path.join(root, folder)).sort()) {
+    if (!fs.statSync(path.join(root, folder, name)).isFile()) continue;   // skip sub-folders like Practice/
     const text = fs.readFileSync(path.join(root, folder, name), 'utf8');
     let found = null;
     if (name.endsWith('.md')) found = fromMarkdown(text);

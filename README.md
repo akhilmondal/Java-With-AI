@@ -130,6 +130,7 @@ Java With AI/
   7. Employees sorted by salary descending, then by name
   8. Numbers partitioned into even and odd
 - [ ] **S02** Check against the solutions, only after you've tried. Includes a second way for some problems and the classic mistakes → [S02_StreamSolutions.java](02-java8-streams/S02_StreamSolutions.java)
+- [ ] ⭐ **S03** Parallel streams: the common ForkJoinPool, when it's faster, and the traps (shared list, reduce identity, order, blocking calls) → read [S03_ParallelStreams.md](02-java8-streams/S03_ParallelStreams.md), run [S03_ParallelStreams.java](02-java8-streams/S03_ParallelStreams.java)
 
 ### Part 3 · SQL in PostgreSQL (Sat, 1.5 h) → `03-sql/`
 
@@ -243,6 +244,7 @@ Your plan already covers the core. These come up often in 3-year Java full-stack
 - **J11 Modern Java:** "Which Java version do you use, and what's new in it?" is a common opener.
 - **J12 Design patterns:** Strategy and Factory fit payment-gateway code (PayU vs Setu) naturally, so you can answer from your own work.
 - **J13 and B13 Multithreading** (you asked for these on 29 Sep): a payments backend is full of threads, from request threads, @Async and schedulers to RabbitMQ consumers. "How do you stop a double debit?" is a favourite question.
+- **S03 Parallel streams** (you asked on 7 Oct): "When would you use parallelStream?" is a common Java 8 follow-up, and the common-pool trap matters in a Spring Boot service.
 - **Q07 Indexes and isolation levels:** the usual follow-up once the SQL queries are done.
 - **B12 Testing:** "How do you test this service?" comes up in most Spring rounds.
 - **M09 Docker:** only if time is left over. Your JD doesn't mention Docker or Kubernetes.

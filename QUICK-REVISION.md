@@ -21,6 +21,7 @@
 - [J13 ⭐ · Multithreading from zero: threads, their life, the 3 dangers, and the tools](#j13-multithreadingfromzero)
 - [S00 · Streams toolkit: the collectors you need for the 8 programs](#s00-streamstoolkit)
 - [S02 The 8 stream programs](#s02-streamsolutions)
+- [S03 · Parallel streams: when one word makes it faster, and when it breaks things](#s03-parallelstreams)
 - [Q00 · SQL toolkit: how a query really runs, JOINs, GROUP BY/HAVING, window functions](#q00-sql-toolkit)
 - [Q01 Nth highest salary](#q01-nth-highest-salary)
 - [Q02 Highest salary per department](#q02-highest-salary-per-department)
@@ -672,6 +673,52 @@ Traps: counting() gives Long | problem 4 needs distinct() (without it: 15000) |
 Memory hook: groupingBy makes the bins, the downstream writes the label; partitioningBy = yes/no bins;
        sorting = a comparator chain.
 ```
+
+---
+
+<a id="s03-parallelstreams"></a>
+
+## S03 · Parallel streams: when one word makes it faster, and when it breaks things
+
+[Full lesson](02-java8-streams/S03_ParallelStreams.md) · [Back to contents](#contents)
+
+**🧬 The story:** a loop uses 1 core, 7 idle → Fork/Join (Java 7) → too much code → `parallelStream()` (Java 8) → shared ArrayList loses items → `collect`/`reduce` → small lists and HTTP calls get slower → parallel only for big CPU work, `CompletableFuture` + own pool for I/O
+
+```mermaid
+flowchart TD
+    Q{"Should I use<br/>parallelStream()?"} --> A{"Big list AND<br/>CPU-heavy work?"}
+    A -- no --> N1["❌ sequential<br/>(100 items: 6x slower parallel)"]
+    A -- yes --> B{"Any HTTP / DB /<br/>sleep inside?"}
+    B -- yes --> N2["❌ CompletableFuture + own pool<br/>(16 calls: 300 ms, not 600)"]
+    B -- no --> C{"Changes shared data?"}
+    C -- yes --> N3["❌ fix it: collect / reduce"]
+    C -- no --> Y["✅ parallelStream()<br/>8 lakh scores: 1,391 → 587 ms"]
+```
+
+**🧠 Must remember**
+1. `parallelStream()` = split → work on many threads → join. Built on **Fork/Join (Java 7)**, added in **Java 8**.
+2. It uses the **common ForkJoinPool**: **cores − 1** workers (7 on 8 cores) + the calling thread. **Shared by the whole JVM.**
+3. Wins only for **big + CPU-heavy + independent** work: 8 lakh risk scores 1,391 ms → 587 ms (about 2.4×, not 8×).
+4. Small/cheap work gets **slower**: 100 numbers, 4,300 ns → 26,000 ns.
+5. **No shared mutable state:** `forEach(list::add)` gave 2,528 of 10,000, or a crash. Use `collect`/`toList()`.
+6. **reduce:** identity must be neutral (0 for +), op associative. `reduce(10, +)` gave 65 instead of 25.
+7. **Order:** `forEach` jumbles, `forEachOrdered` / `toList()` / `findFirst` keep order. `findAny` is faster.
+8. **Never block** inside it: 16 × 300 ms calls = 600 ms on 8 threads. Own pool of 16 = 300 ms.
+9. ArrayList and arrays split well. LinkedList and `Stream.iterate` split badly.
+
+**⚠️ Top traps**
+- Adding to an outside ArrayList / HashMap inside the lambda.
+- HTTP / DB calls inside a parallel stream (blocks the shared common pool).
+- "Parallel is always faster": measure; small lists lose.
+
+**🎯 30-second answer:** "A normal stream uses one core. parallelStream splits the data, runs the pieces on the common ForkJoinPool, which has cores minus one threads plus the caller, and joins the results. It helps for big CPU-heavy work, like 8 lakh risk scores in 0.6 s instead of 1.4. It's slower for small lists, it breaks with shared mutable state, so I use collect, and I never put blocking calls in it because the pool is shared by the whole JVM. For parallel service calls I use CompletableFuture with my own executor."
+
+**🔑 Memory hook:** *Exam copies: 8 teachers, each with their own stack, one adds the totals. Don't make them write in one register, don't give them 5 copies, and don't let them sit on the phone.*
+
+**🗣️ Say it aloud (no peeking):**
+1. Why do parallel streams exist? What was the pain before (Java 7 and before)?
+2. Which pool do they run on, how many threads, and why is that dangerous in a Spring Boot app?
+3. Name 3 cases where parallel gives a wrong answer or is slower, with the numbers.
 
 ---
 
